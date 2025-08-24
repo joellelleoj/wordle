@@ -1,0 +1,442 @@
+= Wordle Frontend Application
+:toc:
+:toc-placement!:
+
+image:https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react[]
+image:https://img.shields.io/badge/TypeScript-4.9+-3178C6?style=for-the-badge&logo=typescript[]
+image:https://img.shields.io/badge/Vite-4+-646CFF?style=for-the-badge&logo=vite[]
+
+A modern, fully-featured Wordle game frontend built with React, TypeScript, and Vite, following microservice architecture principles and 12-Factor App methodology.
+
+toc::[]
+
+== 🎮 Live Application
+
+🌐 **Production URL**: https://devstud.imn.htwk-leipzig.de/dev11/
+
+== 🏗️ Architecture Overview
+
+This frontend application implements a complete microservice architecture adhering to academic requirements for the Web Engineering (C227) course.
+
+.System Architecture
+[plantuml, architecture-diagram, svg]
+----
+@startuml
+!define RECTANGLE class
+
+RECTANGLE Frontend {
+  + React 18 + TypeScript
+  + Vite Build Tool
+  + CSS Modules
+  + PWA Support
+}
+
+RECTANGLE "Game Service" as GameSvc {
+  + Port: 8082
+  + Endpoint: /dev11/api
+  + Game Logic
+  + Word Validation
+}
+
+RECTANGLE "User Service" as UserSvc {
+  + Port: 8081  
+  + Endpoint: /dev11/api2
+  + Authentication
+  + User Profiles
+  + Statistics
+}
+
+RECTANGLE "PostgreSQL" as DB1 {
+  + Game Data
+  + Word Dictionary
+}
+
+RECTANGLE "PostgreSQL" as DB2 {
+  + User Data
+  + Statistics
+}
+
+RECTANGLE "Redis" as Cache {
+  + Session Storage
+  + Game Cache
+}
+
+Frontend --> GameSvc : REST API
+Frontend --> UserSvc : REST API
+GameSvc --> DB1 : SQL
+GameSvc --> Cache : Cache
+UserSvc --> DB2 : SQL
+UserSvc --> Cache : Sessions
+
+note right of Frontend : Stateless Frontend\n12-Factor Compliant
+note right of GameSvc : Single Responsibility\nGame Logic Only
+note right of UserSvc : Single Responsibility\nUser Management Only
+@enduml
+----
+
+=== 🎯 Architectural Principles
+
+==== ✅ 12-Factor App Methodology
+- [x] **Codebase**: Single codebase tracked in Git
+- [x] **Dependencies**: Explicit dependency management via package.json
+- [x] **Config**: Configuration via environment variables
+- [x] **Backing Services**: External services treated as attached resources
+- [x] **Build/Release/Run**: Strict separation via Docker containers
+- [x] **Processes**: Stateless, share-nothing processes
+- [x] **Port Binding**: Self-contained service export via port binding
+- [x] **Concurrency**: Horizontal scaling via process model
+- [x] **Disposability**: Fast startup and graceful shutdown
+- [x] **Dev/Prod Parity**: Development and production environments kept similar
+- [x] **Logs**: Application logs treated as event streams
+- [x] **Admin Processes**: Administrative tasks run as one-off processes
+
+==== 🔐 Single Responsibility Principle
+- **Frontend**: Presentation layer and user interaction only
+- **Game Service**: Game logic, word validation, and dictionary management
+- **User Service**: Authentication, user profiles, and statistics
+- **No Direct Database Access**: Implements bulkhead architecture
+
+==== 🚀 Microservice Architecture
+- Stateless frontend application
+- Independent, deployable services
+- RESTful API communication only
+- Service-specific databases (recommended)
+
+== 🛠️ Technology Stack
+
+=== Frontend Stack
+[cols="2,3,2"]
+|===
+|Technology |Purpose |Version
+
+|React |UI Framework |18.2+
+|TypeScript |Type Safety |5.0+
+|Vite |Build Tool & Dev Server |4.4+
+|React Router |Client-side Routing |6.15+
+|CSS Modules |Scoped Styling |Built-in
+|Jest |Testing Framework |29.6+
+|React Testing Library |Component Testing |13.4+
+|===
+
+=== Deployment Stack
+[cols="2,3,2"]
+|===
+|Technology |Purpose |Version
+
+|Docker |Containerization |Latest
+|Nginx |Web Server & Reverse Proxy |Alpine
+|Node.js |Build Environment |18 Alpine
+|===
+
+== 🎯 Features Implemented
+
+=== 🎮 Core Game Features
+- [x] **Complete Wordle Mechanics**: 6 attempts, 5-letter words
+- [x] **Real-time Feedback**: Color-coded tile system (correct/present/absent)
+- [x] **Tile Animations**: Flip animations with staggered reveals
+- [x] **Physical & Virtual Keyboards**: Full keyboard input support
+- [x] **Input Validation**: Word length and dictionary validation
+- [x] **Game State Management**: Persistent game sessions
+- [x] **Vibration Feedback**: Tactile feedback on mobile devices
+
+=== 👤 User Management
+- [x] **User Registration**: Email-based account creation with validation
+- [x] **JWT Authentication**: Secure token-based authentication  
+- [x] **OAuth2 Integration**: Google and GitHub social login
+- [x] **Profile Management**: User profiles with avatars and display names
+- [x] **Protected Routes**: Authentication-required game access
+
+=== 📊 Statistics & Social Features  
+- [x] **Game Statistics**: Win rate, average attempts, streak tracking
+- [x] **Performance Charts**: Visual representation of game history
+- [x] **Game Sharing**: Share results with emoji grids
+- [x] **User Profiles**: Public/private profile viewing
+- [x] **Game Posts**: Share completed games with comments
+- [x] **Social Features**: Follow/unfollow users, comment system
+- [x] **User Search**: Find and discover other players
+
+=== 🎨 User Experience
+- [x] **Responsive Design**: Mobile-first, adaptive layout
+- [x] **Dark/Light Mode**: System preference detection
+- [x] **Accessibility**: ARIA labels, keyboard navigation, screen reader support
+- [x] **Progressive Web App**: Installable, offline-capable
+- [x] **Error Handling**: Graceful error states and user feedback
+- [x] **Loading States**: Skeleton screens and loading indicators
+
+== 🧪 Testing Strategy (70%+ Coverage Required)
+
+=== Test Types Implemented
+```typescript
+// Unit Tests - Pure functions and utilities
+describe('gameLogic utils', () => {
+  test('validates word correctly', () => {
+    expect(validateWord('HELLO')).toBe(true);
+    expect(validateWord('hello')).toBe(false);
+    expect(validateWord('TEST')).toBe(false);
+  });
+});
+
+// Component Tests - Rendering and interactions
+describe('GameTile component', () => {
+  test('renders with correct status', () => {
+    render(<GameTile letter="A" status="correct" />);
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByTestId('game-tile-A')).toHaveClass('correct');
+  });
+});
+
+// Integration Tests - User workflows  
+describe('Game flow integration', () => {
+  test('complete game workflow', async () => {
+    render(<GamePage />);
+    // Simulate complete game interaction
+    await userEvent.keyboard('HELLO');
+    await userEvent.keyboard('{Enter}');
+    // Assert game state changes
+  });
+});
+
+// Snapshot Tests - UI consistency
+test('GameBoard matches snapshot', () => {
+  const tree = renderer.create(<GameBoard gameState={mockGameState} />);
+  expect(tree).toMatchSnapshot();
+});
+```
+
+=== Coverage Requirements
+- **Branches**: 70%+ coverage
+- **Functions**: 70%+ coverage  
+- **Lines**: 70%+ coverage
+- **Statements**: 70%+ coverage
+
+Run tests: `npm run test:coverage`
+
+== 🚀 Development Setup
+
+=== Prerequisites
+- Node.js 18+
+- npm 9+
+- Docker & Docker Compose
+
+=== Quick Start
+```bash
+# Clone the repository
+git clone <repository-url>
+cd wordle-frontend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Start development server
+npm run dev
+
+# Open browser to http://localhost:3000
+```
+
+=== Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run test         # Run tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+npm run lint         # Lint code
+```
+
+== 🐳 Docker Deployment
+
+=== Local Development with Docker
+```bash
+# Build the Docker image
+docker build -t wordle-frontend .
+
+# Run the container
+docker run -p 8080:3000 wordle-frontend
+
+# Access at http://localhost:8080
+```
+
+=== Production Deployment
+The application is configured for deployment on the `devstud.imn.htwk-leipzig.de` server with the following routing:
+
+- **Frontend**: `https://devstud.imn.htwk-leipzig.de/dev11/` → `127.0.10.11:8080`
+- **Game API**: `https://devstud.imn.htwk-leipzig.de/dev11/api/` → `127.0.10.11:8082`  
+- **User API**: `https://devstud.imn.htwk-leipzig.de/dev11/api2/` → `127.0.10.11:8081`
+
+=== Docker Compose Integration
+```yaml
+# Example docker-compose.yml structure
+version: '3.8'
+services:
+  frontend:
+    build: .
+    ports:
+      - "127.0.10.11:8080:3000"
+    environment:
+      - VITE_API_BASE_URL=https://devstud.imn.htwk-leipzig.de/dev11
+    depends_on:
+      - game-service
+      - user-service
+```
+
+== 🔒 Security Implementation
+
+=== Authentication & Authorization
+- **JWT Token Management**: Secure token storage and refresh handling
+- **OAuth2 Integration**: Google and GitHub authentication  
+- **Protected Routes**: Authentication-required route protection
+- **CSRF Protection**: Token-based request authentication
+- **Input Validation**: Client and server-side input validation
+
+=== Security Headers
+```nginx
+# Security headers in nginx.conf
+add_header X-Frame-Options "SAMEORIGIN";
+add_header X-Content-Type-Options "nosniff";  
+add_header X-XSS-Protection "1; mode=block";
+add_header Content-Security-Policy "default-src 'self'...";
+```
+
+== 📱 Progressive Web App Features
+
+- **Installable**: Add to home screen capability
+- **Offline Support**: Service worker implementation  
+- **Push Notifications**: Game reminders and social updates
+- **Background Sync**: Offline game synchronization
+- **Responsive Icons**: Multiple icon sizes for different devices
+
+== 🌐 API Integration
+
+=== RESTful API Communication
+```typescript
+// Example API service structure
+export const gameService = {
+  async startNewGame(token: string): Promise<GameResponse> {
+    return apiClient.post('/api/game/new', {}, { token });
+  },
+  
+  async submitGuess(token: string, gameId: string, guess: string): Promise<GuessResponse> {
+    return apiClient.post('/api/game/guess', { gameId, guess }, { token });
+  }
+};
+```
+
+=== Error Handling Strategy
+- **Network Errors**: Automatic retry with exponential backoff
+- **Authentication Errors**: Automatic token refresh and re-authentication  
+- **Validation Errors**: User-friendly error messages
+- **Server Errors**: Graceful degradation and error reporting
+
+== 📊 Performance Optimization
+
+=== Build Optimization
+- **Code Splitting**: Automatic route-based code splitting
+- **Tree Shaking**: Unused code elimination
+- **Asset Optimization**: Image compression and lazy loading
+- **Bundle Analysis**: Webpack bundle analyzer integration
+
+=== Runtime Performance  
+- **Virtual Scrolling**: Efficient list rendering for large datasets
+- **Debounced Inputs**: Reduced API calls for search and validation
+- **Memoization**: React.memo and useMemo optimization
+- **Service Worker**: Asset caching and offline support
+
+== 📋 Component Architecture
+
+=== Component Categories
+```
+src/components/
+├── ui/              # Reusable UI components
+│   ├── Button/      # Generic button component
+│   ├── Modal/       # Modal dialog component  
+│   ├── Toast/       # Notification system
+│   └── LoadingSpinner/
+├── game/            # Game-specific components
+│   ├── GameBoard/   # Main game board
+│   ├── GameTile/    # Individual tile component
+│   ├── VirtualKeyboard/
+│   └── GameStats/
+├── auth/            # Authentication components
+│   ├── LoginForm/   
+│   ├── RegisterForm/
+│   └── ProtectedRoute/
+├── profile/         # User profile components
+│   ├── ProfileHeader/
+│   ├── GameHistory/
+│   └── StatsChart/
+└── layout/          # Layout components
+    ├── Header/
+    ├── Navigation/
+    └── Footer/
+```
+
+=== Design System
+- **CSS Modules**: Scoped styling prevents style conflicts
+- **Design Tokens**: Consistent colors, typography, and spacing
+- **Component Props**: TypeScript interfaces for prop validation
+- **Accessibility**: ARIA labels and keyboard navigation support
+
+== 🔧 Environment Configuration
+
+=== Environment Variables
+```bash
+# Development
+VITE_API_BASE_URL=http://localhost:3000
+VITE_ENVIRONMENT=development
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_GITHUB_CLIENT_ID=your_github_client_id
+
+# Production  
+VITE_API_BASE_URL=https://devstud.imn.htwk-leipzig.de/dev11
+VITE_ENVIRONMENT=production
+VITE_GOOGLE_CLIENT_ID=your_production_google_client_id
+VITE_GITHUB_CLIENT_ID=your_production_github_client_id
+```
+
+=== Feature Flags
+- **Analytics**: Enable/disable analytics tracking
+- **Sentry**: Error reporting configuration  
+- **PWA**: Progressive Web App features
+- **OAuth2**: Social authentication providers
+
+== 🏆 Academic Requirements Compliance
+
+=== ✅ Mandatory Requirements Met
+- [x] **Microservice Architecture**: Frontend communicates only via REST APIs
+- [x] **12-Factor App Methodology**: All principles implemented  
+- [x] **Single Responsibility**: Each component has one clear purpose
+- [x] **Docker Containerization**: Complete Docker setup with multi-stage builds
+- [x] **RESTful Services**: Proper HTTP verbs and JSON communication
+- [x] **JWT Authentication**: Secure authentication implementation
+- [x] **OAuth2 Integration**: Social login as required
+- [x] **Testing Coverage**: 70%+ coverage with unit, integration, and snapshot tests
+- [x] **Documentation**: Comprehensive AsciiDoc documentation
+- [x] **Git Repository**: Version control with proper commit history
+
+=== 🎯 Bonus Features Implemented  
+- [x] **PWA Support**: Installable web application
+- [x] **Advanced CSS**: CSS Grid, Flexbox, animations, and responsive design
+- [x] **Accessibility**: WCAG compliance and screen reader support  
+- [x] **Performance Optimization**: Code splitting and lazy loading
+- [x] **Modern React Patterns**: Hooks, context, and functional components
+- [x] **TypeScript**: Full type safety throughout the application
+- [x] **Advanced Testing**: Comprehensive test suite with multiple test types
+
+== 📝 License
+
+This project is developed for academic purposes as part of the Web Engineering (C227) course at HTWK Leipzig.
+
+== 👥 Contributors
+
+- **Development Team**: [Your Team Name]
+- **Course**: Web Engineering (C227)  
+- **Supervisor**: Prof. Dr. Andreas Both
+- **Institution**: HTWK Leipzig
+
+---
+
+*Last updated: August 2025*
