@@ -1,0 +1,217 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # ============================================================================
+  # FRONTEND SERVICE (Port 8080 -> /dev11 route)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wordle_frontend
+    ports:
+      - "127.0.10.11:8080:80"  # Server constraint: MUST bind to this address:port
+    environment:
+      - REACT_APP_API_URL=http://127.0.10.11:8082
+      - REACT_APP_ENVIRONMENT=production
+    volumes:
+      - frontend_build:/usr/share/nginx/html:ro
+    depends_on:
+      - api-gateway
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # API GATEWAY SERVICE (Port 8082 -> /dev11/api route)
+  # ============================================================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: wordle_api_gateway
+    ports:
+      - "127.0.10.11:8082:8082"  # Server constraint: MUST bind to this address:port
+    environment:
+      - NODE_ENV=production
+      - PORT=8082
+      - GAME_SERVICE_URL=http://game-service:3001
+      - USER_SERVICE_URL=http://user-service:3002
+      - PROFILE_SERVICE_URL=http://profile-service:3003
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=http://127.0.10.11:8080,https://devstud.imn.htwk-leipzig.de
+    depends_on:
+      - game-service
+      - redis
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # GAME SERVICE (Internal network only)
+  # ============================================================================
+  game-service:
+    build:
+      context: ./game-service
+      dockerfile: Dockerfile
+    container_name: wordle_game_service
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - ALLOWED_ORIGINS=http://api-gateway:8082
+      - DICTIONARY_SOURCE=github
+      - GITHUB_WORDS_URL=https://raw.githubusercontent.com/tabatkins/wordle-list/main/words
+    depends_on:
+      - redis
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # USER SERVICE (Internal network only - for future implementation)
+  # ============================================================================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: wordle_user_service
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DATABASE_URL=postgresql://wordle_user:${POSTGRES_PASSWORD:-defaultpass}@postgres-users:5432/wordle_users
+      - JWT_SECRET=${JWT_SECRET:-fallback-jwt-secret-change-in-production}
+      - JWT_EXPIRE=7d
+      - BCRYPT_ROUNDS=12
+    depends_on:
+      - postgres-users
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # PROFILE SERVICE (Internal network only - for future implementation)
+  # ============================================================================
+  profile-service:
+    build:
+      context: ./profile-service
+      dockerfile: Dockerfile
+    container_name: wordle_profile_service
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - DATABASE_URL=postgresql://wordle_profile:${POSTGRES_PASSWORD:-defaultpass}@postgres-profiles:5432/wordle_profiles
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres-profiles
+      - redis
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # REDIS CACHE & SESSION STORE
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: wordle_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-defaultredispass}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-defaultredispass}
+    volumes:
+      - redis_data:/data
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================================
+  # POSTGRESQL DATABASES
+  # ============================================================================
+  postgres-users:
+    image: postgres:15-alpine
+    container_name: wordle_postgres_users
+    environment:
+      - POSTGRES_DB=wordle_users
+      - POSTGRES_USER=wordle_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-defaultpass}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+      - ./database/init-users.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wordle_user -d wordle_users"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres-profiles:
+    image: postgres:15-alpine  
+    container_name: wordle_postgres_profiles
+    environment:
+      - POSTGRES_DB=wordle_profiles
+      - POSTGRES_USER=wordle_profile
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-defaultpass}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_profiles_data:/var/lib/postgresql/data
+      - ./database/init-profiles.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - wordle-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wordle_profile -d wordle_profiles"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+# ============================================================================
+# NETWORKS & VOLUMES
+# ============================================================================
+networks:
+  wordle-network:
+    driver: bridge
+    name: wordle_network
+
+volumes:
+  frontend_build:
+    name: wordle_frontend_build
+  redis_data:
+    name: wordle_redis_data
+  postgres_users_data:
+    name: wordle_postgres_users_data
+  postgres_profiles_data:
+    name: wordle_postgres_profiles_data

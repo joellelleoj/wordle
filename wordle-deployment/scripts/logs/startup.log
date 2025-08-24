@@ -1,0 +1,62 @@
+[2025-08-22 18:00:58] [INFO] =========================================
+[2025-08-22 18:00:58] [INFO]     Wordle Application Shutdown Script
+[2025-08-22 18:00:58] [INFO] =========================================
+[2025-08-22 18:01:09] [INFO] =========================================
+[2025-08-22 18:01:09] [INFO]     Wordle Application Shutdown Script
+[2025-08-22 18:01:09] [INFO] =========================================
+[2025-08-22 18:01:24] [INFO] =========================================
+[2025-08-22 18:01:24] [INFO]     Wordle Application Shutdown Script
+[2025-08-22 18:01:24] [INFO] =========================================
+[2025-08-22 19:40:35] [INFO] =========================================
+[2025-08-22 19:40:35] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:40:35] [INFO] =========================================
+[2025-08-22 19:40:49] [INFO] =========================================
+[2025-08-22 19:40:49] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:40:49] [INFO] =========================================
+[2025-08-22 19:40:49] [INFO] Using Docker Compose v1
+[2025-08-22 19:40:49] [INFO] Container runtime: docker
+[2025-08-22 19:40:49] [INFO] Compose command: docker-compose
+[2025-08-22 19:40:49] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:40:49] [ERROR] .env file not found
+[2025-08-22 19:40:49] [ERROR] .env.example also not found
+[2025-08-22 19:40:49] [INFO] Please create .env file with required variables
+[2025-08-22 19:41:41] [INFO] =========================================
+[2025-08-22 19:41:41] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:41:41] [INFO] =========================================
+[2025-08-22 19:41:41] [INFO] Using Docker Compose v1
+[2025-08-22 19:41:41] [INFO] Container runtime: docker
+[2025-08-22 19:41:41] [INFO] Compose command: docker-compose
+[2025-08-22 19:41:41] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:41:42] [ERROR] .env file not found
+[2025-08-22 19:41:42] [ERROR] .env.example also not found
+[2025-08-22 19:41:42] [INFO] Please create .env file with required variables
+[2025-08-22 19:43:43] [INFO] =========================================
+[2025-08-22 19:43:43] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:43:43] [INFO] =========================================
+[2025-08-22 19:43:43] [INFO] Using Docker Compose v1
+[2025-08-22 19:43:43] [INFO] Container runtime: docker
+[2025-08-22 19:43:43] [INFO] Compose command: docker-compose
+[2025-08-22 19:43:43] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:43:43] [ERROR] .env file not found
+[2025-08-22 19:43:43] [ERROR] .env.example also not found
+[2025-08-22 19:43:43] [INFO] Please create .env file with required variables
+[2025-08-22 19:47:59] [INFO] =========================================
+[2025-08-22 19:47:59] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:47:59] [INFO] =========================================
+[2025-08-22 19:48:00] [INFO] Using Docker Compose v1
+[2025-08-22 19:48:00] [INFO] Container runtime: docker
+[2025-08-22 19:48:00] [INFO] Compose command: docker-compose
+[2025-08-22 19:48:00] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:48:00] [ERROR] .env file not found
+[2025-08-22 19:48:00] [ERROR] .env.example also not found
+[2025-08-22 19:48:00] [INFO] Please create .env file with required variables
+[2025-08-22 19:48:58] [INFO] =========================================
+[2025-08-22 19:48:58] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:48:58] [INFO] =========================================
+[2025-08-22 19:48:58] [INFO] Using Docker Compose v1
+[2025-08-22 19:48:58] [INFO] Container runtime: docker
+[2025-08-22 19:48:59] [INFO] Compose command: docker-compose
+[2025-08-22 19:48:59] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:48:59] [ERROR] .env file not found
+[2025-08-22 19:48:59] [ERROR] .env.example also not found
+[2025-08-22 19:48:59] [INFO] Please create .env file with required variables

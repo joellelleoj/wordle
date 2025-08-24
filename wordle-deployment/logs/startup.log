@@ -1,0 +1,86 @@
+[2025-08-22 19:43:56] [INFO] =========================================
+[2025-08-22 19:43:56] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:43:56] [INFO] =========================================
+[2025-08-22 19:43:56] [INFO] Using Docker Compose v1
+[2025-08-22 19:43:56] [INFO] Container runtime: docker
+[2025-08-22 19:43:56] [INFO] Compose command: docker-compose
+[2025-08-22 19:43:56] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts
+[2025-08-22 19:43:56] [ERROR] .env file not found
+[2025-08-22 19:43:56] [ERROR] .env.example also not found
+[2025-08-22 19:43:56] [INFO] Please create .env file with required variables
+[2025-08-22 19:50:19] [INFO] =========================================
+[2025-08-22 19:50:19] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:50:19] [INFO] =========================================
+[2025-08-22 19:50:20] [INFO] Using Docker Compose v1
+[2025-08-22 19:50:20] [INFO] Container runtime: docker
+[2025-08-22 19:50:20] [INFO] Compose command: docker-compose
+[2025-08-22 19:50:20] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment
+[2025-08-22 19:50:20] [INFO] Environment file found: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/.env
+[2025-08-22 19:50:20] [INFO] Environment variables validated
+[2025-08-22 19:50:20] [INFO] Validating Docker Compose configuration...
+[2025-08-22 19:50:20] [ERROR] Docker Compose configuration is invalid
+[2025-08-22 19:50:20] [INFO] Run 'docker-compose config' to see the errors
+[2025-08-22 19:50:53] [INFO] =========================================
+[2025-08-22 19:50:53] [INFO]     Wordle Application Startup Script
+[2025-08-22 19:50:53] [INFO] =========================================
+[2025-08-22 19:50:53] [INFO] Using Docker Compose v1
+[2025-08-22 19:50:53] [INFO] Container runtime: docker
+[2025-08-22 19:50:54] [INFO] Compose command: docker-compose
+[2025-08-22 19:50:54] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment
+[2025-08-22 19:50:54] [INFO] Environment file found: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/.env
+[2025-08-22 19:50:54] [INFO] Environment variables validated
+[2025-08-22 19:50:54] [INFO] Validating Docker Compose configuration...
+[2025-08-22 19:50:54] [ERROR] Docker Compose configuration is invalid
+[2025-08-22 19:50:54] [INFO] Run 'docker-compose config' to see the errors
+[2025-08-22 21:27:53] [INFO] =========================================
+[2025-08-22 21:27:53] [INFO]     Wordle Application Startup Script
+[2025-08-22 21:27:53] [INFO] =========================================
+[2025-08-22 21:27:53] [ERROR] This script must be run on a Linux system
+[2025-08-22 21:27:53] [INFO] Current OS: msys
+[2025-08-22 21:28:18] [INFO] =========================================
+[2025-08-22 21:28:18] [INFO]     Wordle Application Startup Script
+[2025-08-22 21:28:18] [INFO] =========================================
+[2025-08-22 21:28:18] [INFO] Using Docker Compose v2
+[2025-08-22 21:28:18] [INFO] Container runtime: docker
+[2025-08-22 21:28:18] [INFO] Compose command: docker compose
+[2025-08-22 21:28:18] [INFO] Working directory: /mnt/c/Users/ejoel/wordle-project/wordle-deployment
+[2025-08-22 21:28:18] [INFO] Environment file found: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/.env
+[2025-08-22 21:28:18] [INFO] Environment variables validated
+[2025-08-22 21:28:18] [INFO] Validating Docker Compose configuration...
+[2025-08-22 21:28:18] [INFO] Docker Compose configuration is valid
+[2025-08-22 21:28:18] [INFO] Stopping any existing containers...
+[2025-08-22 21:28:19] [INFO] Building and starting services...
+[2025-08-22 21:28:19] [INFO] This may take several minutes on first run...
+[2025-08-22 21:28:47] [INFO] Services started successfully
+[2025-08-22 21:28:47] [INFO] Waiting for services to initialize...
+[2025-08-22 21:29:02] [INFO] Performing basic health checks...
+[2025-08-22 21:29:03] [INFO] ✅ All 4 containers are running
+[2025-08-22 21:29:03] [INFO] Testing frontend endpoint...
+[2025-08-22 21:29:03] [INFO] ✅ Frontend accessible at http://127.0.10.11:8080
+[2025-08-22 21:29:03] [INFO] Testing API Gateway endpoint...
+[2025-08-22 21:29:03] [INFO] ✅ API Gateway accessible at http://127.0.10.11:8082
+[2025-08-22 21:29:03] [INFO] Testing health endpoint...
+[2025-08-22 21:29:03] [INFO] ✅ Health endpoint working at http://127.0.10.11:8082/health
+[2025-08-22 21:29:03] [INFO] Testing database connection...
+[2025-08-22 21:29:03] [INFO] ✅ Database is ready
+[2025-08-22 21:29:03] [INFO] Testing Redis connection...
+[2025-08-22 21:29:03] [INFO] ✅ Redis is ready
+[2025-08-22 21:29:03] [INFO] 
+[2025-08-22 21:29:03] [INFO] Current service status:
+[2025-08-22 21:29:03] [INFO] 
+[2025-08-22 21:29:03] [INFO] =========================================
+[2025-08-22 21:29:03] [INFO] 🎉 Startup Process Completed!
+[2025-08-22 21:29:03] [INFO] =========================================
+[2025-08-22 21:29:04] [INFO] 
+[2025-08-22 21:29:04] [INFO] 🌐 Frontend URL: http://127.0.10.11:8080
+[2025-08-22 21:29:04] [INFO] 🔗 API URL: http://127.0.10.11:8082
+[2025-08-22 21:29:04] [INFO] 🔗 Health Check: http://127.0.10.11:8082/health
+[2025-08-22 21:29:04] [INFO] 
+[2025-08-22 21:29:04] [INFO] 📋 Useful commands:
+[2025-08-22 21:29:04] [INFO]   View all logs:     docker compose logs
+[2025-08-22 21:29:04] [INFO]   Follow logs:       docker compose logs -f
+[2025-08-22 21:29:04] [INFO]   Stop services:     /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts/stop-all.sh
+[2025-08-22 21:29:04] [INFO]   Restart:           /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts/start-all.sh
+[2025-08-22 21:29:04] [INFO]   Health check:      /mnt/c/Users/ejoel/wordle-project/wordle-deployment/scripts/health-check.sh
+[2025-08-22 21:29:04] [INFO] 
+[2025-08-22 21:29:04] [INFO] 📁 Logs saved to: /mnt/c/Users/ejoel/wordle-project/wordle-deployment/logs/startup.log
