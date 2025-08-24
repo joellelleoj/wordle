@@ -1,0 +1,224 @@
+.gameHistory {
+  background-color: var(--color-background-light);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+}
+
+.gameList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gameCard {
+  background-color: var(--color-background);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gameInfo {
+  flex: 1;
+}
+
+.gameResult {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.resultBadge {
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.resultBadge.won {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.resultBadge.lost {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.word {
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.gameMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.date::after {
+  content: "•";
+  margin-left: 12px;
+  color: var(--color-text-light);
+}
+
+.gamePattern {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patternRow {
+  display: flex;
+  gap: 2px;
+}
+
+.patternTile {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.patternTile.correct {
+  background-color: var(--color-correct);
+}
+
+.patternTile.present {
+  background-color: var(--color-present);
+}
+
+.patternTile.absent {
+  background-color: var(--color-absent);
+}
+
+.gameActions {
+  display: flex;
+  gap: 8px;
+}
+
+.postModal {
+  padding: 20px 0;
+}
+
+.gamePreview {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.previewPattern {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background-color: var(--color-background-light);
+  border-radius: 8px;
+}
+
+.previewRow {
+  display: flex;
+  gap: 4px;
+}
+
+.previewTile {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.previewTile.correct {
+  background-color: var(--color-correct);
+}
+
+.previewTile.present {
+  background-color: var(--color-present);
+}
+
+.previewTile.absent {
+  background-color: var(--color-absent);
+}
+
+.commentSection {
+  margin-bottom: 24px;
+}
+
+.commentLabel {
+  display: block;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.commentInput {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  resize: vertical;
+  min-height: 80px;
+}
+
+.commentInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.postActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .gameHistory {
+    padding: 16px;
+  }
+
+  .gameCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .gamePattern {
+    align-self: center;
+  }
+
+  .gameActions {
+    justify-content: center;
+  }
+
+  .postActions {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,144 @@
+.container {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.container.top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.container.top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.container.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.container.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.container.top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  pointer-events: auto;
+  animation: slideInRight 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.toast::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: currentColor;
+}
+
+.success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.error {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+}
+
+.warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+}
+
+.info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+  border: 1px solid var(--color-info-border);
+}
+
+.icon {
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.dismissButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: currentColor;
+  opacity: 0.7;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.dismissButton:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+  }
+
+  .container.top-center {
+    transform: none;
+  }
+
+  .toast {
+    max-width: none;
+    padding: 12px;
+  }
+}

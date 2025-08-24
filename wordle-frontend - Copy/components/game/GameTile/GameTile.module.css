@@ -1,0 +1,85 @@
+.tile {
+  width: 62px;
+  height: 62px;
+  border: 2px solid var(--color-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  user-select: none;
+  transition: all 0.2s ease-in-out;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.tile.empty {
+  border-color: var(--color-border-light);
+  background-color: transparent;
+}
+
+.tile.filled {
+  border-color: var(--color-border-dark);
+  background-color: var(--color-background-light);
+  animation: pop 0.1s ease-in-out;
+}
+
+.tile.correct {
+  background-color: var(--color-correct);
+  border-color: var(--color-correct);
+  color: white;
+}
+
+.tile.present {
+  background-color: var(--color-present);
+  border-color: var(--color-present);
+  color: white;
+}
+
+.tile.absent {
+  background-color: var(--color-absent);
+  border-color: var(--color-absent);
+  color: white;
+}
+
+.tile.flip {
+  animation: flip 0.6s ease-in-out forwards;
+}
+
+.letter {
+  display: block;
+  animation: inherit;
+}
+
+@keyframes flip {
+  0% {
+    transform: rotateX(0);
+  }
+  50% {
+    transform: rotateX(-90deg);
+  }
+  100% {
+    transform: rotateX(0);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .tile {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+}

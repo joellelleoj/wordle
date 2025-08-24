@@ -1,0 +1,157 @@
+.statsChart {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  background-color: var(--color-background-light);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 20px;
+}
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chartRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attemptNumber {
+  width: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.barContainer {
+  flex: 1;
+  position: relative;
+  height: 32px;
+  background-color: var(--color-background);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.bar {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-correct),
+    var(--color-present)
+  );
+  border-radius: 6px;
+  transition: width 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+.count {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  position: absolute;
+  right: 8px;
+  z-index: 1;
+}
+
+.performanceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.performanceCard {
+  text-align: center;
+  padding: 20px;
+  background-color: var(--color-background);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.performanceValue {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.performanceLabel {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.records {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.record {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--color-background);
+  border-radius: 8px;
+}
+
+.recordLabel {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.recordValue {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.loading,
+.error,
+.noData {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 16px;
+  }
+
+  .performanceGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .performanceValue {
+    font-size: 1.5rem;
+  }
+
+  .record {
+    flex-direction: column;
+    text-align: center;
+    gap: 4px;
+  }
+}

@@ -1,0 +1,16 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 20px;
+  user-select: none;
+  max-width: 350px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .board {
+    padding: 10px;
+    max-width: 300px;
+  }
+}

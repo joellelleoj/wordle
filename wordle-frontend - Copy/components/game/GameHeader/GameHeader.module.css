@@ -1,0 +1,37 @@
+.gameHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 60px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
+}
+
+.title h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .gameHeader {
+    padding: 0 16px;
+  }
+
+  .title h1 {
+    font-size: 1.5rem;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+}

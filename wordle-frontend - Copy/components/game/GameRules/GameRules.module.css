@@ -1,0 +1,50 @@
+.rulesContainer {
+  padding: 20px 0;
+  max-width: 500px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 16px;
+}
+
+.section p {
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.section ul {
+  color: var(--color-text-secondary);
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.section li {
+  margin-bottom: 8px;
+}
+
+.example {
+  margin-bottom: 20px;
+}
+
+.exampleRow {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.example p {
+  margin: 0;
+  font-size: 14px;
+}

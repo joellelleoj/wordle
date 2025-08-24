@@ -1,0 +1,102 @@
+.keyboard {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px 10px;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.row:last-child {
+  margin-bottom: 0;
+}
+
+.key {
+  min-width: 43px;
+  height: 58px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-key-bg);
+  color: var(--color-key-text);
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.1s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.key:hover:not(.disabled) {
+  background-color: var(--color-key-bg-hover);
+}
+
+.key:active:not(.disabled) {
+  transform: scale(0.95);
+}
+
+.key.special {
+  min-width: 65px;
+  font-size: 12px;
+}
+
+/* Key status colors - matches tile colors */
+.key.empty {
+  /* Default key styling - no special status */
+  background-color: var(--color-key-bg);
+  color: var(--color-key-text);
+}
+
+.key.correct {
+  background-color: var(--color-correct);
+  color: white;
+}
+
+.key.present {
+  background-color: var(--color-present);
+  color: white;
+}
+
+.key.absent {
+  background-color: var(--color-absent);
+  color: white;
+}
+
+.key.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.key.disabled:hover {
+  background-color: var(--color-key-bg);
+  transform: none;
+}
+
+@media (max-width: 768px) {
+  .keyboard {
+    padding: 10px 5px;
+  }
+
+  .key {
+    min-width: 35px;
+    height: 50px;
+    font-size: 12px;
+  }
+
+  .key.special {
+    min-width: 55px;
+    font-size: 10px;
+  }
+
+  .row {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+}
