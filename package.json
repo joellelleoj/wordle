@@ -1,22 +1,42 @@
 {
   "name": "wordle-api-gateway",
   "version": "1.0.0",
-  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
-  "main": "index.js",
+  "description": "Wordle API Gateway - Routes requests to microservices",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest"
   },
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-api-gateway.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@types/express": "^5.0.3",
-    "@types/node": "^24.3.0",
-    "express": "^5.1.0",
+    "axios": "^1.11.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-rate-limit": "^6.7.0",
+    "helmet": "^7.2.0",
+    "http-proxy-middleware": "^2.0.6",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.1",
+    "node-fetch": "^2.7.0",
+    "express-validator": "^7.0.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/jest": "^29.5.3",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^20.19.11",
+    "jest": "^29.6.1",
+    "@types/node-fetch": "^2.6.9",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
   }
 }
