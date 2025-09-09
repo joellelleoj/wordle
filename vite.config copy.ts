@@ -1,4 +1,3 @@
-// vite.config.ts - Windows-compatible configuration
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -20,17 +19,5 @@ export default defineConfig({
       "@styles": path.resolve(__dirname, "src/styles"),
       "/src": path.resolve(__dirname, "src"),
     },
-  },
-  build: {
-    outDir: "dist",
-    sourcemap: true,
-    target: "es2020", // Match your tsconfig
-  },
-  optimizeDeps: {
-    include: ["react", "react-dom"],
-  },
-  // Explicitly handle file system issues
-  esbuild: {
-    target: "es2020",
   },
 });

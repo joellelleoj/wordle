@@ -1,0 +1,647 @@
+= Wordle Frontend
+:toc:
+
+:toc:
+:source-highlighter: highlight.js
+
+== Overview
+
+The Wordle Frontend is a React-based single-page application that provides the user interface for the Wordle game. Built with TypeScript and following modern React patterns, it implements a stateless architecture with centralized state management.
+
+== Architecture
+
+=== Key Principles
+* **Stateless Components**: Components are pure and predictable
+* **Single Responsibility**: Each component has one clear purpose
+* **Separation of Concerns**: Business logic separated from UI logic
+* **Service Layer**: All API communication abstracted into services
+
+=== Folder Structure
+[source]
+----
+src/
+├── components/          # Reusable UI components
+│   ├── game/           # Game-specific components
+│   ├── layout/         # Layout components
+│   └── profile/        # Profile-related components
+├── hooks/              # Custom React hooks
+├── pages/              # Page-level components
+├── services/           # API communication layer
+└── __tests__/          # Test files
+----
+
+== Components
+
+=== Core Components
+* **App.tsx**: Main application router and layout
+* **GamePage**: Handles Wordle game functionality
+* **ProfilePage**: Displays user statistics and history
+* **LoginPage**: Authentication interface
+
+=== Game Components
+* **Board**: Displays the game grid
+* **Keyboard**: Interactive keyboard interface
+* **UserStats**: User statistics display
+
+== Services
+
+=== Authentication Service (`authService`)
+Handles user authentication, token management, and session persistence.
+
+**Key Methods:**
+* `login(email, password)`: Authenticate user
+* `register(email, username, password)`: Create new account
+* `verifyToken()`: Validate current session
+* `logout()`: Clear authentication state
+
+=== Profile Service (`profileService`)
+Manages user profile data and game statistics.
+
+**Key Methods:**
+* `getUserStats(userId)`: Fetch user statistics
+* `getGameHistory(userId)`: Retrieve game history
+* `recordGame(userId, gameData)`: Save completed game
+
+=== Game Service (`gameService`)
+Communicates with the game backend for game operations.
+
+**Key Methods:**
+* `createGame()`: Start new game session
+* `submitGuess(gameId, guess)`: Submit word guess
+* `getGameState(gameId)`: Get current game state
+
+== State Management
+
+=== Hooks
+* **useAuth**: Centralized authentication state
+* **useNavigation**: Page navigation state
+
+=== Stateless Architecture
+The frontend maintains no persistent state in components. All state is either:
+* Managed by custom hooks
+* Stored in localStorage (tokens only)
+* Fetched from backend services
+
+== Testing
+
+=== Test Types
+* **Unit Tests**: Individual component and function testing
+* **Snapshot Tests**: UI regression prevention
+* **Integration Tests**: Service layer testing
+
+=== Test Commands
+[source,bash]
+----
+npm test              # Run tests in watch mode
+npm run test:coverage # Generate coverage report
+----
+
+=== Coverage Requirements
+* Minimum 80% code coverage
+* All services must have comprehensive tests
+* All components must have snapshot tests
+
+== Development
+
+=== Prerequisites
+* Node.js 16+
+* npm or yarn
+
+=== Setup
+[source,bash]
+----
+npm install          # Install dependencies
+npm start           # Start development server
+npm run build       # Build for production
+----
+
+=== Code Standards
+* **TypeScript**: Strict type checking enabled
+* **ESLint**: Code quality enforcement
+* **Prettier**: Code formatting
+* **JSDoc**: Function documentation required
+
+== API Integration
+
+The frontend communicates with backend services through a unified API gateway:
+
+* **Development**: `http://localhost:8082/api`
+* **Production**: `/api` (relative path for nginx proxy)
+
+=== Error Handling
+* Network errors are caught and displayed to users
+* Authentication errors trigger automatic logout
+* Game errors show retry options
+
+== Build and Deployment
+
+=== Docker Configuration
+[source,dockerfile]
+----
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+----
+
+=== Environment Configuration
+* `NODE_ENV`: Development/production mode
+* `REACT_APP_API_URL`: API endpoint configuration
+
+== Security
+
+=== Authentication
+* JWT tokens stored in localStorage
+* Automatic token validation
+* Secure logout functionality
+
+=== XSS Protection
+* All user input sanitized
+* CSP headers configured in nginx
+* React's built-in XSS protection
+
+== Performance
+
+=== Optimization Techniques
+* Code splitting at route level
+* Lazy loading of components
+* Memoization of expensive operations
+* Efficient re-rendering patterns
+
+=== Bundle Analysis
+[source,bash]
+----
+npm run build
+npm run analyze  # Generate bundle analysis
+----
+
+== Accessibility
+
+=== Standards Compliance
+* WCAG 2.1 AA compliance
+* Semantic HTML structure
+* Keyboard navigation support
+* Screen reader compatibility
+
+=== Testing
+[source,bash]
+----
+npm run test:a11y    # Ac
+
+== Component Overview
+* *GamePage*: Main game logic and state management
+* *Board*: Game board visualization
+* *Keyboard*: Input interface
+* *Header*: Navigation and authentication
+
+== Architecture
+[Link to main architecture diagram]
+
+== Testing
+Unit tests: src/components/**/*.test.tsx
+Snapshot tests: src/components/**/*.snap
+
+image:https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react[]
+image:https://img.shields.io/badge/TypeScript-4.9+-3178C6?style=for-the-badge&logo=typescript[]
+image:https://img.shields.io/badge/Vite-4+-646CFF?style=for-the-badge&logo=vite[]
+
+A modern, fully-featured Wordle game frontend built with React, TypeScript, and Vite, following microservice architecture principles and 12-Factor App methodology.
+
+toc::[]
+
+== 🎮 Live Application
+
+🌐 **Production URL**: https://devstud.imn.htwk-leipzig.de/dev11/
+
+== 🏗️ Architecture Overview
+
+This frontend application implements a complete microservice architecture adhering to academic requirements for the Web Engineering (C227) course.
+
+.System Architecture
+[plantuml, architecture-diagram, svg]
+----
+@startuml
+!define RECTANGLE class
+
+RECTANGLE Frontend {
+  + React 18 + TypeScript
+  + Vite Build Tool
+  + CSS Modules
+  + PWA Support
+}
+
+RECTANGLE "Game Service" as GameSvc {
+  + Port: 8082
+  + Endpoint: /dev11/api
+  + Game Logic
+  + Word Validation
+}
+
+RECTANGLE "User Service" as UserSvc {
+  + Port: 8081  
+  + Endpoint: /dev11/api2
+  + Authentication
+  + User Profiles
+  + Statistics
+}
+
+RECTANGLE "PostgreSQL" as DB1 {
+  + Game Data
+  + Word Dictionary
+}
+
+RECTANGLE "PostgreSQL" as DB2 {
+  + User Data
+  + Statistics
+}
+
+RECTANGLE "Redis" as Cache {
+  + Session Storage
+  + Game Cache
+}
+
+Frontend --> GameSvc : REST API
+Frontend --> UserSvc : REST API
+GameSvc --> DB1 : SQL
+GameSvc --> Cache : Cache
+UserSvc --> DB2 : SQL
+UserSvc --> Cache : Sessions
+
+note right of Frontend : Stateless Frontend\n12-Factor Compliant
+note right of GameSvc : Single Responsibility\nGame Logic Only
+note right of UserSvc : Single Responsibility\nUser Management Only
+@enduml
+----
+
+=== 🎯 Architectural Principles
+
+==== ✅ 12-Factor App Methodology
+- [x] **Codebase**: Single codebase tracked in Git
+- [x] **Dependencies**: Explicit dependency management via package.json
+- [x] **Config**: Configuration via environment variables
+- [x] **Backing Services**: External services treated as attached resources
+- [x] **Build/Release/Run**: Strict separation via Docker containers
+- [x] **Processes**: Stateless, share-nothing processes
+- [x] **Port Binding**: Self-contained service export via port binding
+- [x] **Concurrency**: Horizontal scaling via process model
+- [x] **Disposability**: Fast startup and graceful shutdown
+- [x] **Dev/Prod Parity**: Development and production environments kept similar
+- [x] **Logs**: Application logs treated as event streams
+- [x] **Admin Processes**: Administrative tasks run as one-off processes
+
+==== 🔐 Single Responsibility Principle
+- **Frontend**: Presentation layer and user interaction only
+- **Game Service**: Game logic, word validation, and dictionary management
+- **User Service**: Authentication, user profiles, and statistics
+- **No Direct Database Access**: Implements bulkhead architecture
+
+==== 🚀 Microservice Architecture
+- Stateless frontend application
+- Independent, deployable services
+- RESTful API communication only
+- Service-specific databases (recommended)
+
+== 🛠️ Technology Stack
+
+=== Frontend Stack
+[cols="2,3,2"]
+|===
+|Technology |Purpose |Version
+
+|React |UI Framework |18.2+
+|TypeScript |Type Safety |5.0+
+|Vite |Build Tool & Dev Server |4.4+
+|React Router |Client-side Routing |6.15+
+|CSS Modules |Scoped Styling |Built-in
+|Jest |Testing Framework |29.6+
+|React Testing Library |Component Testing |13.4+
+|===
+
+=== Deployment Stack
+[cols="2,3,2"]
+|===
+|Technology |Purpose |Version
+
+|Docker |Containerization |Latest
+|Nginx |Web Server & Reverse Proxy |Alpine
+|Node.js |Build Environment |18 Alpine
+|===
+
+== 🎯 Features Implemented
+
+=== 🎮 Core Game Features
+- [x] **Complete Wordle Mechanics**: 6 attempts, 5-letter words
+- [x] **Real-time Feedback**: Color-coded tile system (correct/present/absent)
+- [x] **Tile Animations**: Flip animations with staggered reveals
+- [x] **Physical & Virtual Keyboards**: Full keyboard input support
+- [x] **Input Validation**: Word length and dictionary validation
+- [x] **Game State Management**: Persistent game sessions
+- [x] **Vibration Feedback**: Tactile feedback on mobile devices
+
+=== 👤 User Management
+- [x] **User Registration**: Email-based account creation with validation
+- [x] **JWT Authentication**: Secure token-based authentication  
+- [x] **OAuth2 Integration**: Google and GitHub social login
+- [x] **Profile Management**: User profiles with avatars and display names
+- [x] **Protected Routes**: Authentication-required game access
+
+=== 📊 Statistics & Social Features  
+- [x] **Game Statistics**: Win rate, average attempts, streak tracking
+- [x] **Performance Charts**: Visual representation of game history
+- [x] **Game Sharing**: Share results with emoji grids
+- [x] **User Profiles**: Public/private profile viewing
+- [x] **Game Posts**: Share completed games with comments
+- [x] **Social Features**: Follow/unfollow users, comment system
+- [x] **User Search**: Find and discover other players
+
+=== 🎨 User Experience
+- [x] **Responsive Design**: Mobile-first, adaptive layout
+- [x] **Dark/Light Mode**: System preference detection
+- [x] **Accessibility**: ARIA labels, keyboard navigation, screen reader support
+- [x] **Progressive Web App**: Installable, offline-capable
+- [x] **Error Handling**: Graceful error states and user feedback
+- [x] **Loading States**: Skeleton screens and loading indicators
+
+== 🧪 Testing Strategy (70%+ Coverage Required)
+
+=== Test Types Implemented
+```typescript
+// Unit Tests - Pure functions and utilities
+describe('gameLogic utils', () => {
+  test('validates word correctly', () => {
+    expect(validateWord('HELLO')).toBe(true);
+    expect(validateWord('hello')).toBe(false);
+    expect(validateWord('TEST')).toBe(false);
+  });
+});
+
+// Component Tests - Rendering and interactions
+describe('GameTile component', () => {
+  test('renders with correct status', () => {
+    render(<GameTile letter="A" status="correct" />);
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByTestId('game-tile-A')).toHaveClass('correct');
+  });
+});
+
+// Integration Tests - User workflows  
+describe('Game flow integration', () => {
+  test('complete game workflow', async () => {
+    render(<GamePage />);
+    // Simulate complete game interaction
+    await userEvent.keyboard('HELLO');
+    await userEvent.keyboard('{Enter}');
+    // Assert game state changes
+  });
+});
+
+// Snapshot Tests - UI consistency
+test('GameBoard matches snapshot', () => {
+  const tree = renderer.create(<GameBoard gameState={mockGameState} />);
+  expect(tree).toMatchSnapshot();
+});
+```
+
+=== Coverage Requirements
+- **Branches**: 70%+ coverage
+- **Functions**: 70%+ coverage  
+- **Lines**: 70%+ coverage
+- **Statements**: 70%+ coverage
+
+Run tests: `npm run test:coverage`
+
+== 🚀 Development Setup
+
+=== Prerequisites
+- Node.js 18+
+- npm 9+
+- Docker & Docker Compose
+
+=== Quick Start
+```bash
+# Clone the repository
+git clone <repository-url>
+cd wordle-frontend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Start development server
+npm run dev
+
+# Open browser to http://localhost:3000
+```
+
+=== Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run test         # Run tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+npm run lint         # Lint code
+```
+
+== 🐳 Docker Deployment
+
+=== Local Development with Docker
+```bash
+# Build the Docker image
+docker build -t wordle-frontend .
+
+# Run the container
+docker run -p 8080:3000 wordle-frontend
+
+# Access at http://localhost:8080
+```
+
+=== Production Deployment
+The application is configured for deployment on the `devstud.imn.htwk-leipzig.de` server with the following routing:
+
+- **Frontend**: `https://devstud.imn.htwk-leipzig.de/dev11/` → `127.0.10.11:8080`
+- **Game API**: `https://devstud.imn.htwk-leipzig.de/dev11/api/` → `127.0.10.11:8082`  
+- **User API**: `https://devstud.imn.htwk-leipzig.de/dev11/api2/` → `127.0.10.11:8081`
+
+=== Docker Compose Integration
+```yaml
+# Example docker-compose.yml structure
+version: '3.8'
+services:
+  frontend:
+    build: .
+    ports:
+      - "127.0.10.11:8080:3000"
+    environment:
+      - VITE_API_BASE_URL=https://devstud.imn.htwk-leipzig.de/dev11
+    depends_on:
+      - game-service
+      - user-service
+```
+
+== 🔒 Security Implementation
+
+=== Authentication & Authorization
+- **JWT Token Management**: Secure token storage and refresh handling
+- **OAuth2 Integration**: Google and GitHub authentication  
+- **Protected Routes**: Authentication-required route protection
+- **CSRF Protection**: Token-based request authentication
+- **Input Validation**: Client and server-side input validation
+
+=== Security Headers
+```nginx
+# Security headers in nginx.conf
+add_header X-Frame-Options "SAMEORIGIN";
+add_header X-Content-Type-Options "nosniff";  
+add_header X-XSS-Protection "1; mode=block";
+add_header Content-Security-Policy "default-src 'self'...";
+```
+
+== 📱 Progressive Web App Features
+
+- **Installable**: Add to home screen capability
+- **Offline Support**: Service worker implementation  
+- **Push Notifications**: Game reminders and social updates
+- **Background Sync**: Offline game synchronization
+- **Responsive Icons**: Multiple icon sizes for different devices
+
+== 🌐 API Integration
+
+=== RESTful API Communication
+```typescript
+// Example API service structure
+export const gameService = {
+  async startNewGame(token: string): Promise<GameResponse> {
+    return apiClient.post('/api/game/new', {}, { token });
+  },
+  
+  async submitGuess(token: string, gameId: string, guess: string): Promise<GuessResponse> {
+    return apiClient.post('/api/game/guess', { gameId, guess }, { token });
+  }
+};
+```
+
+=== Error Handling Strategy
+- **Network Errors**: Automatic retry with exponential backoff
+- **Authentication Errors**: Automatic token refresh and re-authentication  
+- **Validation Errors**: User-friendly error messages
+- **Server Errors**: Graceful degradation and error reporting
+
+== 📊 Performance Optimization
+
+=== Build Optimization
+- **Code Splitting**: Automatic route-based code splitting
+- **Tree Shaking**: Unused code elimination
+- **Asset Optimization**: Image compression and lazy loading
+- **Bundle Analysis**: Webpack bundle analyzer integration
+
+=== Runtime Performance  
+- **Virtual Scrolling**: Efficient list rendering for large datasets
+- **Debounced Inputs**: Reduced API calls for search and validation
+- **Memoization**: React.memo and useMemo optimization
+- **Service Worker**: Asset caching and offline support
+
+== 📋 Component Architecture
+
+=== Component Categories
+```
+src/components/
+├── ui/              # Reusable UI components
+│   ├── Button/      # Generic button component
+│   ├── Modal/       # Modal dialog component  
+│   ├── Toast/       # Notification system
+│   └── LoadingSpinner/
+├── game/            # Game-specific components
+│   ├── GameBoard/   # Main game board
+│   ├── GameTile/    # Individual tile component
+│   ├── VirtualKeyboard/
+│   └── GameStats/
+├── auth/            # Authentication components
+│   ├── LoginForm/   
+│   ├── RegisterForm/
+│   └── ProtectedRoute/
+├── profile/         # User profile components
+│   ├── ProfileHeader/
+│   ├── GameHistory/
+│   └── StatsChart/
+└── layout/          # Layout components
+    ├── Header/
+    ├── Navigation/
+    └── Footer/
+```
+
+=== Design System
+- **CSS Modules**: Scoped styling prevents style conflicts
+- **Design Tokens**: Consistent colors, typography, and spacing
+- **Component Props**: TypeScript interfaces for prop validation
+- **Accessibility**: ARIA labels and keyboard navigation support
+
+== 🔧 Environment Configuration
+
+=== Environment Variables
+```bash
+# Development
+VITE_API_BASE_URL=http://localhost:3000
+VITE_ENVIRONMENT=development
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_GITHUB_CLIENT_ID=your_github_client_id
+
+# Production  
+VITE_API_BASE_URL=https://devstud.imn.htwk-leipzig.de/dev11
+VITE_ENVIRONMENT=production
+VITE_GOOGLE_CLIENT_ID=your_production_google_client_id
+VITE_GITHUB_CLIENT_ID=your_production_github_client_id
+```
+
+=== Feature Flags
+- **Analytics**: Enable/disable analytics tracking
+- **Sentry**: Error reporting configuration  
+- **PWA**: Progressive Web App features
+- **OAuth2**: Social authentication providers
+
+== 🏆 Academic Requirements Compliance
+
+=== ✅ Mandatory Requirements Met
+- [x] **Microservice Architecture**: Frontend communicates only via REST APIs
+- [x] **12-Factor App Methodology**: All principles implemented  
+- [x] **Single Responsibility**: Each component has one clear purpose
+- [x] **Docker Containerization**: Complete Docker setup with multi-stage builds
+- [x] **RESTful Services**: Proper HTTP verbs and JSON communication
+- [x] **JWT Authentication**: Secure authentication implementation
+- [x] **OAuth2 Integration**: Social login as required
+- [x] **Testing Coverage**: 70%+ coverage with unit, integration, and snapshot tests
+- [x] **Documentation**: Comprehensive AsciiDoc documentation
+- [x] **Git Repository**: Version control with proper commit history
+
+=== 🎯 Bonus Features Implemented  
+- [x] **PWA Support**: Installable web application
+- [x] **Advanced CSS**: CSS Grid, Flexbox, animations, and responsive design
+- [x] **Accessibility**: WCAG compliance and screen reader support  
+- [x] **Performance Optimization**: Code splitting and lazy loading
+- [x] **Modern React Patterns**: Hooks, context, and functional components
+- [x] **TypeScript**: Full type safety throughout the application
+- [x] **Advanced Testing**: Comprehensive test suite with multiple test types
+
+== 📝 License
+
+This project is developed for academic purposes as part of the Web Engineering (C227) course at HTWK Leipzig.
+
+== 👥 Contributors
+
+- **Development Team**: [Your Team Name]
+- **Course**: Web Engineering (C227)  
+- **Supervisor**: Prof. Dr. Andreas Both
+- **Institution**: HTWK Leipzig
+
+---
+
+*Last updated: August 2025*
