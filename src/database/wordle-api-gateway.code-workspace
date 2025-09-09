@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "../../../wordle-api-gateway"
+		},
+		{
+			"path": "../../../wordle-deployment"
+		},
+		{
+			"path": "../../../wordle-frontend"
+		},
+		{
+			"path": "../../../wordle-game-service"
+		},
+		{
+			"path": "../../../wordle-profile-service"
+		},
+		{
+			"path": "../.."
+		}
+	]
+}

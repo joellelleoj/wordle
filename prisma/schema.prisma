@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProvider {
+  local
+  gitlab
+  google
+  github
+
+  @@map("auth_providers")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  username     String?      @unique
+  displayName  String?
+  avatarUrl    String?
+
+  passwordHash String?      // Only for local accounts
+
+  provider     AuthProvider @default(local)
+  providerId   String?      // External provider ID
+
+  isActive     Boolean      @default(true)
+  emailVerified Boolean    @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime?
+
+  // Relations (for future use with profile service)
+  @@unique([provider, providerId])
+  @@map("users")
+}
+

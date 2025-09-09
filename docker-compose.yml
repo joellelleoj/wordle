@@ -1,0 +1,118 @@
+# docker-compose.yml for user service development
+
+version: "3.8"
+
+services:
+  # PostgreSQL Database for User Service
+  user-db:
+    image: postgres:15-alpine
+    container_name: wordle-user-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wordle_users
+      POSTGRES_USER: wordle_user
+      POSTGRES_PASSWORD: secure_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5433:5432" # Map to 5433 to avoid conflicts with system PostgreSQL
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - wordle-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wordle_user -d wordle_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Session Storage and Caching (Optional)
+  user-redis:
+    image: redis:7-alpine
+    container_name: wordle-user-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password
+    ports:
+      - "6380:6379" # Map to 6380 to avoid conflicts
+    volumes:
+      - user_redis_data:/data
+    networks:
+      - wordle-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # User Service (only for production-like testing)
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wordle-user-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+
+      # Database Configuration
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_NAME: wordle_users
+      DB_USER: wordle_user
+      DB_PASSWORD: secure_password
+      DATABASE_URL: postgresql://wordle_user:secure_password@user-db:5432/wordle_users
+
+      # JWT Configuration
+      JWT_SECRET: development-jwt-secret-change-in-production
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_SECRET: development-refresh-secret-change-in-production
+      JWT_REFRESH_EXPIRES_IN: 7d
+
+      # OAuth2 Configuration (replace with your actual values)
+      OAUTH_CLIENT_ID: your-gitlab-client-id
+      OAUTH_CLIENT_SECRET: your-gitlab-client-secret
+      OAUTH_REDIRECT_URI: http://localhost:3003/api/v1/auth/callback
+      OAUTH_AUTHORIZATION_URL: https://git.imn.htwk-leipzig.de/oauth/authorize
+      OAUTH_TOKEN_URL: https://git.imn.htwk-leipzig.de/oauth/token
+      OAUTH_USER_INFO_URL: https://git.imn.htwk-leipzig.de/api/v4/user
+
+      # Frontend Configuration
+      CLIENT_URL: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080
+
+      # API Gateway Configuration
+      API_GATEWAY_URL: http://localhost:8082
+
+      # Security Configuration
+      BCRYPT_ROUNDS: 12
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+    ports:
+      - "3003:3003"
+    depends_on:
+      user-db:
+        condition: service_healthy
+      user-redis:
+        condition: service_healthy
+    networks:
+      - wordle-network
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  user_db_data:
+    driver: local
+  user_redis_data:
+    driver: local
+
+networks:
+  wordle-network:
+    driver: bridge
+    external: true # This will be created in the main docker-compose.yml
