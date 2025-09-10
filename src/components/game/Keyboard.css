@@ -1,0 +1,163 @@
+/* components/game/Keyboard.css - Larger keyboard size */
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  gap: 10px;
+}
+
+.keyboardRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.key {
+  background: #818384;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 65px;
+  min-width: 50px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.1s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.key:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.key:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.keyWide {
+  min-width: 80px;
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.key--correct {
+  background: #538d4e;
+  border-color: #538d4e;
+}
+
+.key--present {
+  background: #b59f3b;
+  border-color: #b59f3b;
+}
+
+.key--absent {
+  background: #3a3a3c;
+  border-color: #3a3a3c;
+  color: #ffffff;
+}
+
+.key:disabled,
+.key.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.key:disabled:hover,
+.key.disabled:hover {
+  background: #818384;
+  transform: none;
+  box-shadow: none;
+}
+
+.key:focus {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.key:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .keyboard {
+    max-width: 500px;
+    gap: 8px;
+  }
+
+  .keyboardRow {
+    gap: 6px;
+  }
+
+  .key {
+    height: 58px;
+    min-width: 44px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  .keyWide {
+    min-width: 70px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .keyboard {
+    max-width: 400px;
+    gap: 6px;
+  }
+
+  .keyboardRow {
+    gap: 4px;
+  }
+
+  .key {
+    height: 52px;
+    min-width: 38px;
+    font-size: 12px;
+  }
+
+  .keyWide {
+    min-width: 60px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .keyboard {
+    max-width: 350px;
+  }
+
+  .key {
+    height: 48px;
+    min-width: 32px;
+    font-size: 11px;
+  }
+
+  .keyWide {
+    min-width: 50px;
+    font-size: 10px;
+  }
+}

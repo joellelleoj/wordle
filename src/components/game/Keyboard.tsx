@@ -1,48 +1,62 @@
-import React, { memo } from "react";
+import { memo, useCallback } from "react";
+import { KeyboardProps } from "../../types/game";
+import "./Keyboard.css";
 
-interface KeyboardProps {
-  onKeyPress: (key: string) => void;
-  usedLetters: Map<string, "correct" | "present" | "absent">;
-  disabled?: boolean;
-}
+const rows = [
+  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+  ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"],
+];
 
 /**
- * Keyboard Component: Renders interactive keyboard
+ * Keyboard Component
  *
- * - Provides touch/click interface for letter input
- * - Shows color feedback for letter states based on guesses
- * - Can be disabled during loading states or animations
+ * Renders a keyboard interface for the Wordle game
+ * Displays letter keys with their evaluation states (correct/present/absent)
+ * and action keys (ENTER, BACKSPACE) for game interaction.
  *
- * @param KeyboardProps containing event handler and keyboard state
- * @returns JSX.Element representing the keyboard
+ * @param onKeyPress - Callback function called when any key is pressed
+ * @param usedLetters - Map of letters to their evaluation states
+ * @param disabled - Whether the keyboard should be disabled
+ *
  */
-export const Keyboard: React.FC<KeyboardProps> = memo(
+const Keyboard = memo<KeyboardProps>(
   ({ onKeyPress, usedLetters, disabled = false }) => {
-    const rows = [
-      ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-      ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-      ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
-    ];
+    const handleKeyClick = useCallback(
+      (key: string) => {
+        if (!disabled) {
+          onKeyPress(key);
+        }
+      },
+      [onKeyPress, disabled]
+    );
 
     return (
       <div className="keyboard">
-        {rows.map((row, i) => (
-          <div key={i} className="keyboard-row">
+        {rows.map((row, rowIndex) => (
+          <div key={rowIndex} className="keyboardRow">
             {row.map((key) => {
-              const keyClass =
-                key === "ENTER" || key === "⌫" ? "key wide" : "key";
+              const keyState = usedLetters.get(key);
+              const isWideKey = key === "ENTER" || key === "BACKSPACE";
+
+              const keyClasses = [
+                "key",
+                isWideKey && "keyWide",
+                keyState && `key--${keyState}`,
+                disabled && "disabled",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
               return (
                 <button
                   key={key}
-                  className={`${keyClass} ${usedLetters.get(key) || ""} ${
-                    disabled ? "disabled" : ""
-                  }`}
-                  onClick={() =>
-                    !disabled && onKeyPress(key === "⌫" ? "BACKSPACE" : key)
-                  }
+                  className={keyClasses}
+                  onClick={() => handleKeyClick(key)}
                   disabled={disabled}
+                  data-testid={`key-${key}`}
                 >
-                  {key}
+                  {key === "BACKSPACE" ? "⌫" : key}
                 </button>
               );
             })}
@@ -51,17 +65,27 @@ export const Keyboard: React.FC<KeyboardProps> = memo(
       </div>
     );
   },
-  (prevProps, nextProps) => {
-    const usedLettersEqual =
-      prevProps.usedLetters.size === nextProps.usedLetters.size &&
-      [...prevProps.usedLetters.entries()].every(
-        ([key, value]) => nextProps.usedLetters.get(key) === value
-      );
-
-    return (
-      prevProps.onKeyPress === nextProps.onKeyPress &&
-      usedLettersEqual &&
-      prevProps.disabled === nextProps.disabled
-    );
-  }
+  areKeyboardPropsEqual
 );
+
+function areKeyboardPropsEqual(
+  prevProps: KeyboardProps,
+  nextProps: KeyboardProps
+): boolean {
+  if (prevProps.usedLetters.size !== nextProps.usedLetters.size) {
+    return false;
+  }
+
+  for (const [key, value] of prevProps.usedLetters.entries()) {
+    if (nextProps.usedLetters.get(key) !== value) {
+      return false;
+    }
+  }
+
+  return (
+    prevProps.onKeyPress === nextProps.onKeyPress &&
+    prevProps.disabled === nextProps.disabled
+  );
+}
+Keyboard.displayName = "Keyboard";
+export { Keyboard };

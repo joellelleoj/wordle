@@ -1,23 +1,22 @@
-import React, { memo } from "react";
-
-interface BoardProps {
-  board: string[][];
-  evaluations: ("correct" | "present" | "absent" | null)[][];
-  shakingRow: number | null;
-  poppingTile: { row: number; col: number } | null;
-  currentRow: number;
-}
+import { memo } from "react";
+import { BoardProps } from "../../types/game";
+import "./Board.css";
 
 /**
- * Board Component: Renders the Wordle game grid
+ * Board Component
  *
- * - Displays the 6x5 game board with letters and their evaluation states
- * - Shows visual feedback through CSS animations (shake, pop, flip reveals)
+ * Renders the main Wordle game board as a 6x5 grid of tiles.
+ * Each tile displays a letter and its evaluation state (correct/present/absent).
+ * Supports animations for user feedback.
  *
- * @param BoardProps containing game state and animation triggers
- * @returns JSX.Element representing the game board
+ * @param board - 6x5 array representing letter positions
+ * @param evaluations - 6x5 array of tile states (correct/present/absent)
+ * @param shakingRow - Row index for shake animation (invalid word feedback)
+ * @param poppingTile - Tile coordinates for pop animation (letter entry)
+ * @param currentRow - Currently active row for styling
+ *
  */
-export const Board: React.FC<BoardProps> = memo(
+const Board = memo<BoardProps>(
   ({ board, evaluations, shakingRow, poppingTile, currentRow }) => {
     return (
       <div className="board">
@@ -28,13 +27,22 @@ export const Board: React.FC<BoardProps> = memo(
                 poppingTile?.row === i && poppingTile?.col === j;
               const hasLetter = letter !== "";
               const isCurrentRow = i === currentRow;
+              const evaluation = evaluations[i]?.[j];
+
+              const tileClasses = [
+                "tile",
+                evaluation && evaluation,
+                isPopping && "pop",
+                hasLetter && isCurrentRow && "filled",
+              ]
+                .filter(Boolean)
+                .join(" ");
 
               return (
                 <div
                   key={j}
-                  className={`tile ${evaluations[i][j] || ""} ${
-                    isPopping ? "pop" : ""
-                  } ${hasLetter && isCurrentRow ? "filled" : ""}`}
+                  className={tileClasses}
+                  data-testid={`tile-${i}-${j}`}
                 >
                   {letter}
                 </div>
@@ -57,3 +65,6 @@ export const Board: React.FC<BoardProps> = memo(
     );
   }
 );
+
+Board.displayName = "Board";
+export { Board };
