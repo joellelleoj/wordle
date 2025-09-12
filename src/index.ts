@@ -5,20 +5,32 @@ import compression from "compression";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import { GameController } from "./controllers/gameController";
+import { setupSwagger } from "./swagger/swagger";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT;
 
-// Middleware
-app.use(helmet());
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Disable for Swagger UI
+  })
+);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: process.env.CORS_ORIGIN?.split(",") || [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://127.0.10.11:8080",
+      "https://devstud.imn.htwk-leipzig.de",
+    ],
     credentials: true,
   })
 );
+
 app.use(compression());
 
 if (process.env.NODE_ENV !== "test") {
@@ -28,18 +40,17 @@ if (process.env.NODE_ENV !== "test") {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize controller
+setupSwagger(app);
+
 const gameController = new GameController();
 
-// Routes
 app.post("/game/new", gameController.createGame);
 app.post("/game/:gameId/guess", gameController.submitGuess);
 app.get("/game/:gameId", gameController.getGameState);
+
 app.get("/health", gameController.healthCheck);
-app.get("/stats", gameController.getStatistics);
 app.post("/admin/refresh-words", gameController.refreshWords);
 
-// Error handling middleware
 app.use(
   (
     err: any,
@@ -47,8 +58,9 @@ app.use(
     res: express.Response,
     _next: express.NextFunction
   ) => {
-    console.error("Unhandled error:", err);
+    console.error("Game service error:", err);
     res.status(500).json({
+      success: false,
       error: "Internal server error",
       message:
         process.env.NODE_ENV === "development"
@@ -60,54 +72,41 @@ app.use(
 
 // 404 handler
 app.use("*", (_req, res) => {
-  res.status(404).json({ error: "Endpoint not found" });
+  res.status(404).json({
+    success: false,
+    error: "Endpoint not found",
+  });
 });
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully...");
-  process.exit(0);
-});
+let server: any = null;
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down gracefully...");
-  process.exit(0);
-});
-
-// Single app.listen call
 if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
+  server = app.listen(PORT, () => {
     console.log(`Game Service running on port ${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
     console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
   });
 }
 
-export default app;
+// Graceful shutdown
+const shutdown = (signal: string) => {
+  console.log(`${signal} received, shutting down ...`);
 
-/*import express from "express";
-import cors from "cors";
-import gameController from "./controllers/gameController";
+  if (gameController && typeof gameController.cleanup === "function") {
+    gameController.cleanup();
+  }
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+};
 
-app.use(cors());
-app.use(express.json());
-
-// Test route
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", service: "game-service" });
-});
-
-// Game routes
-app.post("/game", gameController.createGame);
-app.post("/game/:gameId/guess", gameController.submitGuess);
-app.get("/game/:gameId", gameController.getGameState);
-
-app.listen(PORT, () => {
-  console.log(`Game Service running on port ${PORT}`);
-});
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 export default app;
-*/

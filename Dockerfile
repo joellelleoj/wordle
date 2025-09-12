@@ -1,44 +1,71 @@
-# game-service/Dockerfile
-FROM node:18-alpine
+# Multi-stage build for production efficiency
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (including dev dependencies for building)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S gameservice -u 1001
+
+# Set working directory
+WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code
-COPY src/ ./src/
-COPY tsconfig.json ./
+# Copy built application from builder stage
+COPY --from=builder --chown=gameservice:nodejs /app/dist ./dist
 
-# Install typescript and build
-RUN npm install -g typescript && \
-    npm run build && \
-    npm uninstall -g typescript
+# Copy production environment file
+COPY --chown=gameservice:nodejs .env.production .env
 
-# Create cache directory for word storage
-RUN mkdir -p /app/cache && \
-    chown -R nodejs:nodejs /app
+# Create cache directory with proper permissions
+RUN mkdir -p /app/cache && chown -R gameservice:nodejs /app/cache
 
 # Switch to non-root user
-USER nodejs
+USER gameservice
 
-# Expose port
+# Expose port (internal to Docker network)
 EXPOSE 3002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3002/health', (res) => { \
-    process.exit(res.statusCode === 200 ? 0 : 1) \
-  }).on('error', () => { process.exit(1) })"
+  CMD node -e "const http = require('http'); \
+    const options = { hostname: 'localhost', port: 3002, path: '/health', timeout: 2000 }; \
+    const req = http.request(options, (res) => { \
+      if (res.statusCode === 200) { \
+        process.exit(0); \
+      } else { \
+        process.exit(1); \
+      } \
+    }); \
+    req.on('error', () => process.exit(1)); \
+    req.on('timeout', () => process.exit(1)); \
+    req.setTimeout(2000); \
+    req.end();"
 
-# Start the service
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

@@ -1,16 +1,19 @@
+/**
+ * Game Controller - HTTP Request Handler with Swagger Documentation
+ *
+ * This controller acts as the HTTP interface for the Wordle game service,
+ * handling all REST API endpoints and coordinating between the business logic
+ * layers (WordService and GameService).
+ */
+
 import { Request, Response } from "express";
 import { WordService } from "../services/wordService";
 import { GameService } from "../services/gameService";
 
-// Extend Request interface to include auth context from API Gateway
 interface AuthenticatedRequest extends Request {
   auth?: {
     isAuthenticated: boolean;
-    user?: {
-      id: string;
-      username: string;
-      email: string;
-    };
+    user?: { id: string; username: string; email: string };
     token?: string;
   };
 }
@@ -18,47 +21,104 @@ interface AuthenticatedRequest extends Request {
 export class GameController {
   private wordService: WordService;
   private gameService: GameService;
+  private initialized: boolean = false;
 
   constructor() {
     this.wordService = new WordService();
     this.gameService = new GameService();
     this.initializeServices();
-
-    // Setup periodic cleanup
-    setInterval(() => {
-      this.gameService.cleanupOldGames();
-    }, 60 * 60 * 1000); // Cleanup every hour
   }
 
   private async initializeServices(): Promise<void> {
     try {
       await this.wordService.initialize();
-      console.log("Game controller services initialized successfully");
+      this.initialized = true;
+      console.log("Game controller initialized successfully");
     } catch (error) {
-      console.error("Failed to initialize game controller services:", error);
+      console.error("Failed to initialize game controller:", error);
+      this.initialized = false;
     }
   }
 
-  // POST /game/new - Create a new game
+  private async ensureInitialized(): Promise<boolean> {
+    if (this.initialized) return true;
+
+    const maxWait = 10000;
+    const startTime = Date.now();
+
+    while (!this.initialized && Date.now() - startTime < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return this.initialized;
+  }
+
+  /**
+   * @swagger
+   * /game/new:
+   *   post:
+   *     summary: Create a new Wordle game
+   *     responses:
+   *       201:
+   *         description: Game created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               allOf:
+   *                 - type: object
+   *                   properties:
+   *                     success:
+   *                       type: boolean
+   *                       example: true
+   *                 - $ref: '#/components/schemas/GameState'
+   *             example:
+   *               success: true
+   *               gameId: "game_1672531200000_abc123def"
+   *               board: [["","","","",""],["","","","",""],["","","","",""],["","","","",""],["","","","",""],["","","","",""]]
+   *               evaluations: [[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null]]
+   *               currentRow: 0
+   *               gameOver: false
+   *               won: false
+   *               attempts: 0
+   *               guesses: []
+   *       500:
+   *         description: Server error or service not ready
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *             example:
+   *               success: false
+   *               error: "Failed to create game"
+   *               message: "Word service initialization failed"
+   *       503:
+   *         description: Service not ready
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
   createGame = async (
     req: AuthenticatedRequest,
     res: Response
   ): Promise<void> => {
     try {
-      const targetWord = this.wordService.getRandomWord();
+      const isReady = await this.ensureInitialized();
+      if (!isReady) {
+        res.status(503).json({
+          success: false,
+          error: "Service not ready",
+          message: "Game service is still initializing. Please try again.",
+        });
+        return;
+      }
 
-      // Extract user ID if authenticated (from API Gateway auth filter)
+      const targetWord = this.wordService.getRandomWord();
       const userId = req.auth?.isAuthenticated ? req.auth.user?.id : undefined;
 
       const { gameId, publicState } = this.gameService.createGame(
         targetWord,
         userId
-      );
-
-      console.log(
-        `New game created: ${gameId} (word: ${targetWord}) for user: ${
-          userId || "anonymous"
-        }`
       );
 
       res.status(201).json({
@@ -75,12 +135,106 @@ export class GameController {
     }
   };
 
-  // POST /game/:gameId/guess - Submit a guess
+  /**
+   * @swagger
+   * /game/{gameId}/guess:
+   *   post:
+   *     summary: Submit a word guess
+   *     parameters:
+   *       - in: path
+   *         name: gameId
+   *         required: true
+   *         description: Unique game identifier from game creation
+   *         schema:
+   *           type: string
+   *           example: "game_1672531200000_abc123def"
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/GuessRequest'
+   *     responses:
+   *       200:
+   *         description: Guess processed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/GuessResponse'
+   *             examples:
+   *               validGuess:
+   *                 summary: Valid guess with evaluation
+   *                 value:
+   *                   success: true
+   *                   valid: true
+   *                   result: ["absent", "correct", "present", "correct", "absent"]
+   *                   gameOver: false
+   *                   won: false
+   *                   gameState:
+   *                     gameId: "game_1672531200000_abc123def"
+   *                     currentRow: 1
+   *                     attempts: 1
+   *                     guesses: ["WORLD"]
+   *               invalidWord:
+   *                 summary: Invalid word not in dictionary
+   *                 value:
+   *                   valid: false
+   *                   error: "Not a valid word"
+   *               winningGuess:
+   *                 summary: Winning guess ends game
+   *                 value:
+   *                   success: true
+   *                   valid: true
+   *                   result: ["correct", "correct", "correct", "correct", "correct"]
+   *                   gameOver: true
+   *                   won: true
+   *                   solution: "STUDY"
+   *                   message: "Congratulations! Game saved to your profile."
+   *       400:
+   *         description: Invalid request parameters
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *             examples:
+   *               missingGuess:
+   *                 summary: Missing guess in request body
+   *                 value:
+   *                   success: false
+   *                   error: "Guess is required and must be a string"
+   *               invalidGameId:
+   *                 summary: Missing or invalid game ID
+   *                 value:
+   *                   success: false
+   *                   error: "Game ID is required"
+   *       404:
+   *         description: Game not found or expired
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
   submitGuess = async (
     req: AuthenticatedRequest,
     res: Response
   ): Promise<void> => {
     try {
+      const isReady = await this.ensureInitialized();
+      if (!isReady) {
+        res.status(503).json({
+          success: false,
+          error: "Service not ready",
+          message: "Game service is still initializing. Please try again.",
+        });
+        return;
+      }
+
       const { gameId } = req.params;
       const { guess } = req.body;
 
@@ -100,7 +254,6 @@ export class GameController {
         return;
       }
 
-      // Validate the word exists in our dictionary
       if (!this.wordService.isValidWord(guess)) {
         res.status(200).json({
           valid: false,
@@ -109,10 +262,7 @@ export class GameController {
         return;
       }
 
-      // Get auth token to pass to game service for profile recording
       const authToken = req.auth?.isAuthenticated ? req.auth.token : undefined;
-
-      // Submit guess to game service (now with auth token for profile integration)
       const result = await this.gameService.submitGuess(
         gameId,
         guess,
@@ -124,19 +274,15 @@ export class GameController {
         return;
       }
 
-      // Enhanced response with user context
       const response: any = {
         success: true,
         ...result,
       };
 
-      // Add helpful messages for authenticated users
       if (result.gameOver && req.auth?.isAuthenticated) {
-        if (result.won) {
-          response.message = "Congratulations! Game saved to your profile.";
-        } else {
-          response.message = "Game over! Your progress has been saved.";
-        }
+        response.message = result.won
+          ? "Congratulations! Game saved to your profile."
+          : "Game over! Your progress has been saved.";
       } else if (result.gameOver && !req.auth?.isAuthenticated) {
         response.message = result.won
           ? "Congratulations! Login to save your progress."
@@ -154,7 +300,64 @@ export class GameController {
     }
   };
 
-  // GET /game/:gameId - Get game state
+  /**
+   * @swagger
+   * /game/{gameId}:
+   *   get:
+   *     summary: Get current game state
+   *     parameters:
+   *       - in: path
+   *         name: gameId
+   *         required: true
+   *         description: Unique game identifier
+   *         schema:
+   *           type: string
+   *           example: "game_1672531200000_abc123def"
+   *     responses:
+   *       200:
+   *         description: Game state retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               allOf:
+   *                 - type: object
+   *                   properties:
+   *                     success:
+   *                       type: boolean
+   *                       example: true
+   *                 - $ref: '#/components/schemas/GameState'
+   *             example:
+   *               success: true
+   *               gameId: "game_1672531200000_abc123def"
+   *               board: [["W","O","R","L","D"],["T","E","S","T","S"],["","","","",""],["","","","",""],["","","","",""],["","","","",""]]
+   *               evaluations: [["absent","correct","present","correct","absent"],["present","absent","absent","present","correct"],[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null]]
+   *               currentRow: 2
+   *               gameOver: false
+   *               won: false
+   *               attempts: 2
+   *               guesses: ["WORLD", "TESTS"]
+   *       400:
+   *         description: Missing or invalid game ID
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       404:
+   *         description: Game not found (may have expired)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *             example:
+   *               success: false
+   *               error: "Game not found"
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
   getGameState = async (req: Request, res: Response): Promise<void> => {
     try {
       const { gameId } = req.params;
@@ -191,29 +394,45 @@ export class GameController {
     }
   };
 
-  // GET /stats - Get service statistics
-  getStatistics = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const wordStats = this.wordService.getStatistics();
-      const gameStats = this.gameService.getStatistics();
-
-      res.status(200).json({
-        success: true,
-        words: wordStats,
-        games: gameStats,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Failed to get statistics:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to get statistics",
-      });
-    }
-  };
-
-  // POST /admin/refresh-words - Refresh word dictionary (admin only)
+  /**
+   * @swagger
+   * /admin/refresh-words:
+   *   post:
+   *     summary: Refresh word dictionary
+   *     responses:
+   *       200:
+   *         description: Dictionary refreshed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Words refreshed successfully"
+   *                 statistics:
+   *                   type: object
+   *                   properties:
+   *                     totalWords:
+   *                       type: integer
+   *                       example: 12972
+   *                     initialized:
+   *                       type: boolean
+   *                       example: true
+   *                     lastRefresh:
+   *                       type: string
+   *                       format: date-time
+   *                       example: "2025-01-15T10:30:00.000Z"
+   *       500:
+   *         description: Failed to refresh dictionary
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
   refreshWords = async (_req: Request, res: Response): Promise<void> => {
     try {
       await this.wordService.refreshWords();
@@ -234,26 +453,52 @@ export class GameController {
     }
   };
 
-  // DELETE /admin/cleanup - Manual cleanup of old games
-  cleanupGames = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const cleanedCount = this.gameService.cleanupOldGames();
-
-      res.status(200).json({
-        success: true,
-        message: `Cleaned up ${cleanedCount} expired games`,
-        cleanedCount,
-      });
-    } catch (error) {
-      console.error("Failed to cleanup games:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to cleanup games",
-      });
-    }
-  };
-
-  // GET /health - Health check endpoint
+  /**
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Service health check
+   *     responses:
+   *       200:
+   *         description: Service is healthy and operational
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/HealthResponse'
+   *             example:
+   *               status: "healthy"
+   *               service: "wordle-game-service"
+   *               version: "1.0.0"
+   *               timestamp: "2025-01-15T10:30:00.000Z"
+   *               uptime: 3600
+   *               environment: "production"
+   *               services:
+   *                 wordService:
+   *                   initialized: true
+   *                   wordCount: 12972
+   *                 gameService:
+   *                   activeGames: 15
+   *               endpoints: ["POST /game/new", "POST /game/:gameId/guess", "GET /game/:gameId", "GET /health"]
+   *       500:
+   *         description: Service is unhealthy or experiencing issues
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   example: "unhealthy"
+   *                 service:
+   *                   type: string
+   *                   example: "wordle-game-service"
+   *                 error:
+   *                   type: string
+   *                   example: "Word service initialization failed"
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   */
   healthCheck = async (_req: Request, res: Response): Promise<void> => {
     try {
       const wordStats = this.wordService.getStatistics();
@@ -261,284 +506,11 @@ export class GameController {
 
       res.status(200).json({
         status: "healthy",
-        services: {
-          wordService: {
-            initialized: wordStats.initialized,
-            wordCount: wordStats.totalWords,
-          },
-          gameService: {
-            activeGames: gameCount,
-          },
-          profileIntegration: {
-            enabled: true,
-            serviceUrl:
-              process.env.PROFILE_SERVICE_URL || "http://localhost:3004",
-          },
-        },
+        service: "wordle-game-service",
+        version: "1.0.0",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-      });
-    } catch (error) {
-      console.error("Health check failed:", error);
-      res.status(500).json({
-        status: "unhealthy",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // GET /admin/test-evaluation - Test word evaluation logic
-  testEvaluation = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { guess, target } = req.query;
-
-      if (
-        !guess ||
-        !target ||
-        typeof guess !== "string" ||
-        typeof target !== "string"
-      ) {
-        res.status(400).json({
-          success: false,
-          error: "Both 'guess' and 'target' query parameters are required",
-        });
-        return;
-      }
-
-      const result = this.gameService.testEvaluation(guess, target);
-
-      res.status(200).json({
-        success: true,
-        guess: guess.toUpperCase(),
-        target: target.toUpperCase(),
-        evaluation: result,
-      });
-    } catch (error) {
-      console.error("Test evaluation failed:", error);
-      res.status(500).json({
-        success: false,
-        error: "Test evaluation failed",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-}
-
-/*import { Request, Response } from "express";
-import { WordService } from "../services/wordService";
-import { GameService } from "../services/gameService";
-
-export class GameController {
-  private wordService: WordService;
-  private gameService: GameService;
-
-  constructor() {
-    this.wordService = new WordService();
-    this.gameService = new GameService();
-
-    // Initialize word service
-    this.initializeServices();
-
-    // Setup periodic cleanup
-    setInterval(() => {
-      this.gameService.cleanupOldGames();
-    }, 60 * 60 * 1000); // Cleanup every hour
-  }
-
-  private async initializeServices(): Promise<void> {
-    try {
-      await this.wordService.initialize();
-      console.log("Game controller services initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize game controller services:", error);
-    }
-  }
-
-  // POST /game/new  Create a new game
-  createGame = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      // Get a random word securely
-      const targetWord = this.wordService.getRandomWord();
-      // Create the game
-      const { gameId, publicState } = this.gameService.createGame(targetWord);
-
-      console.log(`New game created: ${gameId} (word: ${targetWord})`); // Log for debugging
-
-      res.status(201).json({
-        success: true,
-        ...publicState,
-      });
-    } catch (error) {
-      console.error("Failed to create game:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to create game",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // POST /game/:gameId/guess Submit a guess
-  submitGuess = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { gameId } = req.params;
-      const { guess } = req.body;
-
-      if (!gameId) {
-        res.status(400).json({
-          success: false,
-          error: "Game ID is required",
-        });
-        return;
-      }
-
-      if (!guess || typeof guess !== "string") {
-        res.status(400).json({
-          success: false,
-          error: "Guess is required and must be a string",
-        });
-        return;
-      }
-
-      // Validate the word exists in our dictionary
-      if (!this.wordService.isValidWord(guess)) {
-        res.status(200).json({
-          valid: false,
-          error: "Not a valid word",
-        });
-        return;
-      }
-
-      // Submit guess to game service
-      const result = this.gameService.submitGuess(gameId, guess);
-
-      if (!result.valid) {
-        res.status(200).json(result);
-        return;
-      }
-
-      // Return successful guess result
-      res.status(200).json({
-        success: true,
-        ...result,
-      });
-    } catch (error) {
-      console.error("Failed to submit guess:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to submit guess",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // GET /game/:gameId Get game state
-  getGameState = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { gameId } = req.params;
-
-      if (!gameId) {
-        res.status(400).json({
-          success: false,
-          error: "Game ID is required",
-        });
-        return;
-      }
-
-      const publicState = this.gameService.getPublicGameState(gameId);
-
-      if (!publicState) {
-        res.status(404).json({
-          success: false,
-          error: "Game not found",
-        });
-        return;
-      }
-
-      res.status(200).json({
-        success: true,
-        ...publicState,
-      });
-    } catch (error) {
-      console.error("Failed to get game state:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to get game state",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // GET /stats Get service statistics
-  getStatistics = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const wordStats = this.wordService.getStatistics();
-      const gameStats = this.gameService.getStatistics();
-
-      res.status(200).json({
-        success: true,
-        words: wordStats,
-        games: gameStats,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Failed to get statistics:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to get statistics",
-      });
-    }
-  };
-
-  // POST /admin/refresh-words Refresh word dictionary (admin only)
-  refreshWords = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      await this.wordService.refreshWords();
-      const stats = this.wordService.getStatistics();
-
-      res.status(200).json({
-        success: true,
-        message: "Words refreshed successfully",
-        statistics: stats,
-      });
-    } catch (error) {
-      console.error("Failed to refresh words:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to refresh words",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
-
-  // DELETE /admin/cleanup Manual cleanup of old games
-  cleanupGames = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const cleanedCount = this.gameService.cleanupOldGames();
-
-      res.status(200).json({
-        success: true,
-        message: `Cleaned up ${cleanedCount} expired games`,
-        cleanedCount,
-      });
-    } catch (error) {
-      console.error("Failed to cleanup games:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to cleanup games",
-      });
-    }
-  };
-
-  // GET /health Health check endpoint
-  healthCheck = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const wordStats = this.wordService.getStatistics();
-      const gameCount = this.gameService.getGameCount();
-
-      res.status(200).json({
-        status: "healthy",
+        environment: process.env.NODE_ENV || "development",
         services: {
           wordService: {
             initialized: wordStats.initialized,
@@ -548,106 +520,25 @@ export class GameController {
             activeGames: gameCount,
           },
         },
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
+        endpoints: [
+          "POST /game/new",
+          "POST /game/:gameId/guess",
+          "GET /game/:gameId",
+          "GET /health",
+        ],
       });
     } catch (error) {
       console.error("Health check failed:", error);
       res.status(500).json({
         status: "unhealthy",
+        service: "wordle-game-service",
         error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       });
     }
   };
 
-  // GET /admin/test-evaluation Test word evaluation logic
-  testEvaluation = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { guess, target } = req.query;
-
-      if (
-        !guess ||
-        !target ||
-        typeof guess !== "string" ||
-        typeof target !== "string"
-      ) {
-        res.status(400).json({
-          success: false,
-          error: "Both 'guess' and 'target' query parameters are required",
-        });
-        return;
-      }
-
-      const result = this.gameService.testEvaluation(guess, target);
-
-      res.status(200).json({
-        success: true,
-        guess: guess.toUpperCase(),
-        target: target.toUpperCase(),
-        evaluation: result,
-      });
-    } catch (error) {
-      console.error("Test evaluation failed:", error);
-      res.status(500).json({
-        success: false,
-        error: "Test evaluation failed",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  };
+  public cleanup(): void {
+    this.gameService.cleanup();
+  }
 }
-/*import { Request, Response } from "express";
-import { GameService } from "../services/gameService";
-import { WordService } from "../services/wordService";
-
-const gameService = new GameService();
-const wordService = new WordService();
-
-export default {
-  createGame: (req: Request, res: Response) => {
-    const gameId = `game-${Date.now()}`;
-    const word = wordService.getRandomWord();
-    gameService.createGame(gameId, word);
-    res.json({ gameId });
-  },
-
-  submitGuess: (req: Request, res: Response) => {
-    const { gameId } = req.params;
-    const { guess } = req.body;
-
-    // Add validation
-    if (!gameId) {
-      return res.status(400).json({ error: "Game ID required" });
-    }
-
-    const game = gameService.getGame(gameId);
-    if (!game) {
-      return res.status(404).json({ error: "Game not found" });
-    }
-
-    if (!guess || !wordService.isValidWord(guess.toUpperCase())) {
-      return res.json({ valid: false });
-    }
-
-    const result = gameService.evaluateGuess(gameId, guess.toUpperCase());
-    return res.json(result);
-  },
-
-  getGameState: (req: Request, res: Response) => {
-    const { gameId } = req.params;
-
-    // Add validation
-    if (!gameId) {
-      return res.status(400).json({ error: "Game ID required" });
-    }
-
-    const game = gameService.getGame(gameId);
-
-    if (!game) {
-      return res.status(404).json({ error: "Game not found" });
-    }
-
-    return res.json(game);
-  },
-};
-*/

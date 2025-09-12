@@ -1,4 +1,3 @@
-// game-service/src/services/gameService.ts - Fixed implementation
 import axios from "axios";
 
 export interface GameState {
@@ -10,7 +9,7 @@ export interface GameState {
   won: boolean;
   attempts: number;
   guesses: string[];
-  targetWord?: string; // Only included in complete state
+  targetWord?: string;
 }
 
 export interface PublicGameState {
@@ -22,7 +21,6 @@ export interface PublicGameState {
   won: boolean;
   attempts: number;
   guesses: string[];
-  // targetWord is excluded from public state unless game is over
 }
 
 export interface GuessResult {
@@ -35,85 +33,29 @@ export interface GuessResult {
   error?: string;
 }
 
-export interface GameStatistics {
-  totalGames: number;
-  activeGames: number;
-  completedGames: number;
-  wonGames: number;
-  winRate: number;
-  averageAttempts: number;
-}
-
 export class GameService {
   private games: Map<string, GameState> = new Map();
-  private words: string[] = [
-    "HELLO",
-    "WORLD",
-    "GAMES",
-    "WORDS",
-    "QUICK",
-    "BROWN",
-    "JUMPS",
-    "FOXES",
-    "APPLE",
-    "GRAPE",
-    "LEMON",
-    "PEACH",
-    "MELON",
-    "BERRY",
-    "CREAM",
-    "SUGAR",
-    "BREAD",
-    "FLOUR",
-    "WATER",
-    "GLASS",
-    "PLATE",
-    "SPOON",
-    "KNIFE",
-    "FORKS",
-    "CHAIR",
-    "TABLE",
-    "HOUSE",
-    "PLANT",
-    "LIGHT",
-    "PHONE",
-    "MOUSE",
-    "PRINT",
-    "SOUND",
-    "MIGHT",
-    "THINK",
-    "PLACE",
-    "WHERE",
-    "EVERY",
-    "GREAT",
-    "AFTER",
-    "NEVER",
-    "AGAIN",
-    "COULD",
-    "WOULD",
-    "SHOULD",
-    "THEIR",
-    "THERE",
-    "ABOUT",
-  ];
-
   private profileServiceUrl: string;
+  private cleanupInterval?: NodeJS.Timeout;
 
   constructor() {
-    this.profileServiceUrl =
-      process.env.PROFILE_SERVICE_URL || "http://localhost:3004";
-    // Start cleanup interval
-    setInterval(() => this.cleanupOldGames(), 60 * 60 * 1000); // Every hour
+    this.profileServiceUrl = process.env.PROFILE_SERVICE_URL;
+
+    if (process.env.NODE_ENV !== "test") {
+      this.cleanupInterval = setInterval(
+        () => this.cleanupOldGames(),
+        60 * 60 * 1000
+      );
+    }
   }
 
   createGame(
-    targetWord?: string,
+    targetWord: string,
     userId?: string
   ): { gameId: string; publicState: PublicGameState } {
     const gameId = `game_${Date.now()}_${Math.random()
       .toString(36)
       .substr(2, 9)}`;
-    const selectedWord = targetWord || this.getRandomWord();
 
     const gameState: GameState = {
       gameId,
@@ -128,17 +70,11 @@ export class GameService {
       won: false,
       attempts: 0,
       guesses: [],
-      targetWord: selectedWord.toUpperCase(),
+      targetWord: targetWord.toUpperCase(),
     };
 
     this.games.set(gameId, gameState);
-    console.log(
-      `Created game ${gameId} with word: ${selectedWord}${
-        userId ? ` for user ${userId}` : ""
-      }`
-    );
 
-    // Return public state (without targetWord)
     const publicState: PublicGameState = {
       gameId: gameState.gameId,
       board: gameState.board,
@@ -156,7 +92,7 @@ export class GameService {
   async submitGuess(
     gameId: string,
     guess: string,
-    userId?: string
+    authToken?: string
   ): Promise<GuessResult> {
     const gameState = this.games.get(gameId);
     if (!gameState) {
@@ -174,16 +110,6 @@ export class GameService {
     }
 
     const normalizedGuess = guess.toUpperCase();
-
-    // Validate guess
-    if (!this.isValidWord(normalizedGuess)) {
-      return {
-        valid: false,
-        error: "Not a valid word",
-      };
-    }
-
-    // Process guess
     const result = this.evaluateGuess(normalizedGuess, gameState.targetWord!);
     const won = normalizedGuess === gameState.targetWord;
 
@@ -211,8 +137,12 @@ export class GameService {
       guesses: [...gameState.guesses],
     };
 
-    // Prepare response
-    const response: GuessResult = {
+    // Record completed game if authenticated
+    if (gameOver && authToken) {
+      await this.recordCompletedGame(gameState, authToken);
+    }
+
+    return {
       valid: true,
       result,
       gameOver,
@@ -220,24 +150,13 @@ export class GameService {
       solution: gameOver ? gameState.targetWord : undefined,
       gameState: publicState,
     };
-
-    // Record completed game automatically if user is authenticated
-    if (gameOver && userId) {
-      await this.recordCompletedGame(gameState, userId);
-    }
-
-    return response;
-  }
-
-  getGameState(gameId: string): GameState | null {
-    return this.games.get(gameId) || null;
   }
 
   getPublicGameState(gameId: string): PublicGameState | null {
     const gameState = this.games.get(gameId);
     if (!gameState) return null;
 
-    const publicState: PublicGameState = {
+    return {
       gameId: gameState.gameId,
       board: gameState.board,
       evaluations: gameState.evaluations,
@@ -247,90 +166,48 @@ export class GameService {
       attempts: gameState.attempts,
       guesses: gameState.guesses,
     };
-
-    return publicState;
-  }
-
-  getStatistics(): GameStatistics {
-    const allGames = Array.from(this.games.values());
-    const completedGames = allGames.filter((g) => g.gameOver);
-    const wonGames = completedGames.filter((g) => g.won);
-
-    return {
-      totalGames: allGames.length,
-      activeGames: allGames.length - completedGames.length,
-      completedGames: completedGames.length,
-      wonGames: wonGames.length,
-      winRate:
-        completedGames.length > 0
-          ? (wonGames.length / completedGames.length) * 100
-          : 0,
-      averageAttempts:
-        wonGames.length > 0
-          ? wonGames.reduce((sum, g) => sum + g.attempts, 0) / wonGames.length
-          : 0,
-    };
   }
 
   getGameCount(): number {
     return this.games.size;
   }
 
-  testEvaluation(
-    guess: string,
-    target: string
-  ): ("correct" | "present" | "absent")[] {
-    return this.evaluateGuess(guess.toUpperCase(), target.toUpperCase());
-  }
-
-  private getRandomWord(): string {
-    return this.words[Math.floor(Math.random() * this.words.length)];
-  }
-
-  private isValidWord(word: string): boolean {
-    // Basic validation - in a real implementation, check against dictionary
-    if (word.length !== 5 || !/^[A-Z]+$/.test(word)) {
-      return false;
-    }
-
-    // Check if word is in our word list or is a reasonable English word
-    return this.words.includes(word) || this.isReasonableEnglishWord(word);
-  }
-
-  private isReasonableEnglishWord(word: string): boolean {
-    // Basic heuristic for English words - no repeated patterns, reasonable letter combinations
-    const commonPatterns = /^[A-Z]{5}$/;
-    const invalidPatterns = /(.)\1{3,}|[QX]{2,}|[BCDFGHJKLMNPQRSTVWXYZ]{4,}/;
-
-    return commonPatterns.test(word) && !invalidPatterns.test(word);
-  }
-
+  // Fixed evaluation logic
   private evaluateGuess(
     guess: string,
     target: string
   ): ("correct" | "present" | "absent")[] {
-    const result: ("correct" | "present" | "absent")[] = [];
-    const targetLetters = target.split("");
-    const guessLetters = guess.split("");
+    const result: ("correct" | "present" | "absent")[] = new Array(5).fill(
+      "absent"
+    );
+    const targetChars = target.split("");
+    const guessChars = guess.split("");
 
-    // First pass: mark correct letters
+    // Create arrays to track letter usage
+    const targetUsed = new Array(5).fill(false);
+    const guessProcessed = new Array(5).fill(false);
+
+    // First pass: Find all exact matches (green)
     for (let i = 0; i < 5; i++) {
-      if (guessLetters[i] === targetLetters[i]) {
+      if (guessChars[i] === targetChars[i]) {
         result[i] = "correct";
-        targetLetters[i] = "*"; // Mark as used
-        guessLetters[i] = "*"; // Mark as processed
+        targetUsed[i] = true;
+        guessProcessed[i] = true;
       }
     }
 
-    // Second pass: mark present/absent letters
+    // Second pass: Find letters in wrong positions (yellow)
     for (let i = 0; i < 5; i++) {
-      if (guessLetters[i] !== "*") {
-        const letterIndex = targetLetters.indexOf(guessLetters[i]);
-        if (letterIndex !== -1) {
+      if (guessProcessed[i]) continue; // Already processed as correct
+
+      const guessLetter = guessChars[i];
+
+      // Look for this letter in unused positions of target
+      for (let j = 0; j < 5; j++) {
+        if (!targetUsed[j] && targetChars[j] === guessLetter) {
           result[i] = "present";
-          targetLetters[letterIndex] = "*"; // Mark as used
-        } else {
-          result[i] = "absent";
+          targetUsed[j] = true;
+          break;
         }
       }
     }
@@ -338,16 +215,11 @@ export class GameService {
     return result;
   }
 
-  // Automatically record completed games to profile service
   private async recordCompletedGame(
     gameState: GameState,
-    userId: string
+    authToken: string
   ): Promise<void> {
     try {
-      console.log(
-        `Recording completed game ${gameState.gameId} for user ${userId}`
-      );
-
       const gameRecord = {
         gameId: gameState.gameId,
         word: gameState.targetWord,
@@ -357,43 +229,22 @@ export class GameService {
         date: new Date().toISOString().split("T")[0],
       };
 
-      // Send to profile service via internal service communication
       await axios.post(`${this.profileServiceUrl}/api/games`, gameRecord, {
         headers: {
           "Content-Type": "application/json",
-          "X-User-ID": userId, // Internal service header
-          "X-Service": "game-service", // Service identification
+          Authorization: `Bearer ${authToken}`,
         },
         timeout: 5000,
       });
-
-      console.log(
-        `Successfully recorded game ${gameState.gameId} for user ${userId}`
-      );
     } catch (error: any) {
       console.error(
         `Failed to record game ${gameState.gameId}:`,
         error.message
       );
-      // Don't throw - game completion should work even if recording fails
     }
   }
 
-  // Health check
-  healthCheck(): any {
-    return {
-      status: "healthy",
-      service: "game-service",
-      timestamp: new Date().toISOString(),
-      stats: {
-        activeGames: this.games.size,
-        availableWords: this.words.length,
-      },
-    };
-  }
-
-  // Cleanup old games (memory management)
-  cleanupOldGames(): void {
+  cleanupOldGames(): number {
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
     let cleanedCount = 0;
 
@@ -408,23 +259,24 @@ export class GameService {
     if (cleanedCount > 0) {
       console.log(`Cleaned up ${cleanedCount} old games`);
     }
+
+    return cleanedCount;
   }
 
-  // Get daily word (for future daily mode implementation)
-  getDailyWord(): string {
-    const today = new Date().toISOString().split("T")[0];
-    const seed = today
-      .split("-")
-      .reduce((acc, part) => acc + parseInt(part), 0);
-    return this.words[seed % this.words.length];
+  // Cleanup method for tests to prevent memory leaks
+  cleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
+    this.games.clear();
   }
 
-  // Debug methods
-  getAllGames(): GameState[] {
-    return Array.from(this.games.values());
-  }
-
-  deleteGame(gameId: string): boolean {
-    return this.games.delete(gameId);
+  // Test helper method
+  testEvaluation(
+    guess: string,
+    target: string
+  ): ("correct" | "present" | "absent")[] {
+    return this.evaluateGuess(guess.toUpperCase(), target.toUpperCase());
   }
 }

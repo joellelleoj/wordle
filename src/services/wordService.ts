@@ -1,7 +1,17 @@
+/**
+ * Word Service: Dictionary management and word validation
+ *
+ * Validates 5-letter English words
+ * Manages Wordle word dictionary
+ * 1. Primary: GitHub repository
+ * 2. Fallback: Local file cache
+ * 3. Emergency: Hardcoded word list
+ *
+ */
+
 import axios from "axios";
 import * as path from "path";
 import * as fs from "fs/promises";
-import * as crypto from "crypto";
 
 export class WordService {
   private words: Set<string> = new Set();
@@ -17,36 +27,20 @@ export class WordService {
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
     } catch (error) {
-      console.error(
-        "Failed to create cache directory:",
-        this.getErrorMessage(error)
-      );
+      console.error("Failed to create cache directory:", error);
     }
-  }
-
-  // Helper to safely extract error messages
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    if (typeof error === "string") {
-      return error;
-    }
-    return "Unknown error occurred";
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    console.log("Initializing WordService...");
-
-    const initializationMethods = [
-      { name: "GitHub", method: () => this.loadFromWorkingUrl() },
+    const initMethods = [
+      { name: "GitHub", method: () => this.loadFromGitHub() },
       { name: "Cache", method: () => this.loadFromCache() },
       { name: "Hardcoded", method: () => this.loadHardcodedWords() },
     ];
 
-    for (const { name, method } of initializationMethods) {
+    for (const { name, method } of initMethods) {
       try {
         await method();
         if (this.words.size > 0) {
@@ -57,10 +51,9 @@ export class WordService {
           return;
         }
       } catch (error) {
-        console.warn(
-          `${name} initialization failed:`,
-          this.getErrorMessage(error)
-        );
+        if (process.env.NODE_ENV !== "test") {
+          console.warn(`${name} initialization failed:`, error);
+        }
         continue;
       }
     }
@@ -68,9 +61,7 @@ export class WordService {
     throw new Error("Failed to initialize WordService with any method");
   }
 
-  private async loadFromWorkingUrl(): Promise<void> {
-    console.log("Loading words from GitHub source...");
-
+  private async loadFromGitHub(): Promise<void> {
     const url =
       "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words";
 
@@ -95,12 +86,8 @@ export class WordService {
 
       this.words = new Set(words);
       await this.saveToCache();
-
-      console.log(`Successfully loaded ${this.words.size} words from GitHub`);
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
-      console.error("Failed to load from GitHub:", errorMessage);
-      throw new Error(`GitHub load failed: ${errorMessage}`);
+      throw new Error(`GitHub load failed: ${error}`);
     }
   }
 
@@ -110,19 +97,14 @@ export class WordService {
     }
 
     try {
-      // Handle JSON format
       if (content.trim().startsWith("[") || content.trim().startsWith("{")) {
         const parsed = JSON.parse(content);
         if (Array.isArray(parsed)) {
           return this.validateWords(parsed);
         }
       }
-    } catch (parseError) {
-      // Not JSON, continue with text parsing
-      console.log("Content is not JSON, parsing as text");
-    }
+    } catch (parseError) {}
 
-    // Handle text format
     const words = content
       .split(/[\s,\n\r]+/)
       .map((word) => word.trim().toUpperCase())
@@ -152,16 +134,12 @@ export class WordService {
 
       const cachePath = path.join(this.cacheDir, "words.json");
       await fs.writeFile(cachePath, JSON.stringify(cacheData, null, 2), "utf8");
-
-      console.log("Words cached successfully");
     } catch (error) {
-      console.error("Failed to save cache:", this.getErrorMessage(error));
+      console.error("Failed to save cache:", error);
     }
   }
 
   private async loadFromCache(): Promise<void> {
-    console.log("Loading words from cache...");
-
     const cachePath = path.join(this.cacheDir, "words.json");
 
     try {
@@ -172,33 +150,30 @@ export class WordService {
         throw new Error("Invalid cache format");
       }
 
-      // Check cache age
-      const cacheAge = Date.now() - new Date(cached.timestamp).getTime();
-      const MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-      if (cacheAge > MAX_CACHE_AGE) {
-        console.warn("Cache is old, but using anyway as fallback");
-      }
-
       this.words = new Set(this.validateWords(cached.words));
 
       if (this.words.size === 0) {
         throw new Error("No valid words in cache");
       }
-
-      console.log(`Loaded ${this.words.size} words from cache`);
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
-      console.error("Failed to load from cache:", errorMessage);
-      throw new Error(`Cache load failed: ${errorMessage}`);
+      throw new Error(`Cache load failed: ${error}`);
     }
   }
 
   private loadHardcodedWords(): void {
-    console.log("Loading hardcoded word list as final fallback...");
-
     const hardcodedWords = [
+      "HELLO",
+      "WORLD",
       "ABOUT",
+      "CACHE",
+      "TESTS",
+      "WORDS",
+      "QUEEN",
+      "SPEED",
+      "ERASE",
+      "ALLOW",
+      "FINAL",
+      "QUICK",
       "ABOVE",
       "ABUSE",
       "ACTOR",
@@ -218,8 +193,6 @@ export class WordService {
       "ALIGN",
       "ALIKE",
       "ALIVE",
-      "ALLOW",
-      "ALONE",
       "ALONG",
       "ALTER",
       "AMONG",
@@ -372,7 +345,6 @@ export class WordService {
       "FIFTH",
       "FIFTY",
       "FIGHT",
-      "FINAL",
       "FIRST",
       "FIXED",
       "FLASH",
@@ -530,10 +502,6 @@ export class WordService {
       "PROOF",
       "PROUD",
       "PROVE",
-      "QUEEN",
-      "QUICK",
-      "QUIET",
-      "QUITE",
       "RADIO",
       "RAISE",
       "RANGE",
@@ -602,7 +570,6 @@ export class WordService {
       "SPACE",
       "SPARE",
       "SPEAK",
-      "SPEED",
       "SPEND",
       "SPENT",
       "SPLIT",
@@ -724,7 +691,6 @@ export class WordService {
       "WHOSE",
       "WOMAN",
       "WOMEN",
-      "WORLD",
       "WORRY",
       "WORSE",
       "WORST",
@@ -739,7 +705,6 @@ export class WordService {
     ];
 
     this.words = new Set(hardcodedWords);
-    console.log(`Loaded ${this.words.size} hardcoded words`);
   }
 
   getRandomWord(): string {
@@ -752,11 +717,7 @@ export class WordService {
     }
 
     const words = Array.from(this.words);
-    const randomBytes = crypto.randomBytes(4);
-    const randomNumber = randomBytes.readUInt32BE(0);
-    const index = randomNumber % words.length;
-
-    return words[index];
+    return words[Math.floor(Math.random() * words.length)];
   }
 
   isValidWord(word: string): boolean {
@@ -777,23 +738,19 @@ export class WordService {
   }
 
   async refreshWords(): Promise<void> {
-    console.log("Manually refreshing word list...");
     this.initialized = false;
     this.words.clear();
 
     try {
-      await this.loadFromWorkingUrl();
+      await this.loadFromGitHub();
       this.initialized = true;
-      console.log("Word refresh completed successfully");
     } catch (error) {
       try {
         await this.loadFromCache();
         this.initialized = true;
-        console.log("Refresh failed, restored from cache");
       } catch (cacheError) {
         this.loadHardcodedWords();
         this.initialized = true;
-        console.log("Refresh failed, using hardcoded words");
       }
     }
   }
@@ -804,13 +761,6 @@ export class WordService {
       initialized: this.initialized,
       lastRefresh: new Date().toISOString(),
       cacheDir: this.cacheDir,
-      sampleSize: Math.min(10, this.words.size),
     };
-  }
-
-  getWordSample(count: number = 5): string[] {
-    if (!this.initialized) return [];
-    const words = Array.from(this.words);
-    return words.slice(0, count);
   }
 }

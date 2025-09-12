@@ -1,8 +1,10 @@
 node_modules/
 package-lock.json
-.env
-.env.local
+coverage/
 dist/
 build/
 *.log
 .DS_Store
+cleanup.sh
+deploy-server.sh
+Dockerfile
