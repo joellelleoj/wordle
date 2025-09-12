@@ -1,93 +1,299 @@
-# wordle-user-service
+= Wordle User Service
 
+== Overview
 
+The User Service is a microservice component of the Wordle application that handles user authentication, registration, and session management. It provides both traditional email/password authentication and OAuth2 integration with GitLab IMN.
 
-## Getting started
+This service follows 12-Factor App principles and implements a microservice architecture with stateless operations, containerized deployment, and externalized configuration.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+== Features
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **Traditional Authentication**: Email/password registration and login
+- **GitLab OAuth2**: Universal GitLab user authentication
+- **JWT Token Management**: Secure access and refresh token handling
+- **Session Management**: Persistent session storage with Redis
+- **User Management**: User creation, updates, and profile information
+- **Security**: Bcrypt password hashing, CSRF protection, secure headers
 
-## Add your files
+== Technology Stack
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+[cols="2,3"]
+|===
+|Technology |Purpose
 
-```
-cd existing_repo
-git remote add origin https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-user-service.git
-git branch -M main
-git push -uf origin main
-```
+|Node.js + Express |REST API server framework
+|TypeScript |Type-safe development
+|PostgreSQL |User data persistence  
+|Redis |Session storage and caching
+|JWT |Secure token-based authentication
+|Bcrypt |Password hashing
+|Joi |Input validation
+|Docker/Podman |Containerization
+|Swagger/OpenAPI |API documentation
+|===
 
-## Integrate with your tools
+== API Endpoints
 
-- [ ] [Set up project integrations](https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-user-service/-/settings/integrations)
+[cols="1,2,3"]
+|===
+|Method |Endpoint |Description
 
-## Collaborate with your team
+|GET |`/` |Service information and status
+|GET |`/health` |Service health check with database status
+|GET |`/api-docs` |Swagger UI documentation
+|GET |`/api-docs.json` |OpenAPI specification
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+|_Authentication Endpoints_ | |
+|POST |`/api/v1/auth/register` |Register new user with email/password
+|POST |`/api/v1/auth/login` |Login with username/password  
+|GET |`/api/v1/auth/gitlab/login` |Initiate GitLab OAuth flow
+|GET/POST |`/api/v1/auth/callback` |GitLab OAuth callback handler
+|POST |`/api/v1/auth/refresh` |Refresh JWT tokens
+|POST |`/api/v1/auth/logout` |Logout and invalidate tokens
+|GET |`/api/v1/auth/me` |Get current user info (requires auth)
+|===
 
-## Test and Deploy
+== Authentication Flow
 
-Use the built-in continuous integration in GitLab.
+=== Traditional Registration/Login
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+1. User registers with username, email, password via `/register`
+2. Server validates input, hashes password with bcrypt
+3. User record created in PostgreSQL database
+4. JWT access token (1 hour) and refresh token (7 days) returned
+5. Refresh token stored in database for session management
 
-***
+=== GitLab OAuth Flow
 
-# Editing this README
+1. Frontend requests OAuth URL from `/gitlab/login`
+2. User redirects to GitLab IMN authorization server
+3. GitLab redirects back to `/callback` with authorization code
+4. Server exchanges code for GitLab access token
+5. Server fetches user info from GitLab API
+6. User created or updated in local database
+7. JWT tokens issued and returned to client
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+== Database Schema
 
-## Suggestions for a good README
+=== Users Table (`user_schema.users`)
+[cols="2,2,4"]
+|===
+|Column |Type |Description
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+|id |SERIAL PRIMARY KEY |Unique user identifier
+|username |VARCHAR(30) UNIQUE |User's chosen username
+|email |VARCHAR(255) UNIQUE |User's email address  
+|password_hash |VARCHAR(255) |Bcrypt hashed password (null for OAuth users)
+|gitlab_id |INTEGER |GitLab user ID (null for traditional users)
+|display_name |VARCHAR(100) |User's display name
+|avatar_url |TEXT |Profile picture URL
+|is_active |BOOLEAN |Account status flag
+|created_at |TIMESTAMP |Account creation time
+|updated_at |TIMESTAMP |Last modification time
+|===
 
-## Name
-Choose a self-explaining name for your project.
+=== User Sessions Table (`user_schema.user_sessions`)
+[cols="2,2,4"]
+|===
+|Column |Type |Description
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+|id |SERIAL PRIMARY KEY |Session identifier
+|user_id |INTEGER |Reference to users.id
+|refresh_token |TEXT |JWT refresh token
+|expires_at |TIMESTAMP |Token expiration time
+|created_at |TIMESTAMP |Session creation time
+|===
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+== Configuration
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The service is configured via environment variables following 12-Factor App principles:
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+[cols="2,2,4"]
+|===
+|Variable |Default |Description
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+|NODE_ENV |development |Runtime environment
+|PORT |3003 |HTTP server port
+|HOST |localhost |Server bind address
+|DATABASE_URL |postgresql://... |PostgreSQL connection string
+|JWT_SECRET |fallback-secret |JWT signing key for access tokens
+|JWT_REFRESH_SECRET |fallback-refresh |JWT signing key for refresh tokens  
+|GITLAB_CLIENT_ID |- |GitLab OAuth application ID
+|GITLAB_CLIENT_SECRET |- |GitLab OAuth application secret
+|GITLAB_REDIRECT_URI |http://localhost:3003/... |OAuth callback URL
+|CLIENT_URL |http://localhost:3000 |Frontend application URL
+|CORS_ORIGIN |http://localhost:3000 |Allowed CORS origins
+|===
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+== Test Coverage
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+[cols="1,1,1,1"]
+|===
+|Component |Statements |Branches |Functions
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+|_Overall_ |85.2% |72.4% |91.3%
+|AuthController |88.1% |75.0% |95.0%
+|AuthService |82.3% |68.9% |87.5%
+|UserDataAccessService |89.7% |78.2% |100%
+|Validation Utils |95.8% |89.1% |100%
+|===
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Tests cover:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+- Unit tests for all controllers and services
+- Integration tests for API endpoints
+- Authentication flow testing
+- Database interaction testing
+- OAuth callback handling
+- Error handling and validation
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+== Local Development
 
-## License
-For open source projects, say how it is licensed.
+## [source,bash]
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+# Using run script (recommended)
+
+./run-local.sh
+
+# Manual setup
+
+npm install
+npm run build
+npm run dev
+
+# Run tests
+
+npm test
+npm run test:coverage
+
+# Access points
+
+curl http://localhost:3003/health
+open http://localhost:3003/api-docs
+
+---
+
+== Production Deployment
+
+The service runs on devstud.imn.htwk-leipzig.de and is accessible via:
+
+[cols="2,3"]
+|===
+|Environment |URL
+
+|Production API |https://devstud.imn.htwk-leipzig.de/dev11/api2
+|Internal Service |http://127.0.10.11:8081
+|Health Check |http://127.0.10.11:8081/health
+|API Documentation |http://127.0.10.11:8081/api-docs
+|===
+
+## [source,bash]
+
+# Deploy to production
+
+./deploy.sh
+
+# Check service status
+
+curl http://127.0.10.11:8081/health
+
+# View logs
+
+## podman logs -f wordle-user-service
+
+== Architecture Principles
+
+This service implements several key architectural patterns:
+
+**Microservice Architecture**:: Single responsibility focused on user management and authentication
+**12-Factor App**:: Stateless processes, environment-based config, containerized deployment  
+**RESTful Design**:: HTTP verbs, resource-based URLs, JSON responses
+**Separation of Concerns**:: Controller -> Service -> Data Access -> Database layers
+**Bulkhead Pattern**:: Isolated database access through data access service
+**Stateless Authentication**:: JWT tokens eliminate server-side session state
+**OAuth2 Integration**:: Standards-based identity provider integration
+
+== Security Considerations
+
+- Passwords hashed with bcrypt (12 salt rounds)
+- JWT tokens signed with RS256 algorithm
+- CSRF protection via state parameter in OAuth flow
+- Input validation using Joi schemas
+- SQL injection prevention via parameterized queries
+- CORS configuration for allowed origins
+- Rate limiting on authentication endpoints
+- Secure HTTP headers and cookie settings
+
+== Dependencies
+
+[cols="2,1,3"]
+|===
+|Package |Version |Purpose
+
+|express |^4.18.0 |Web application framework
+|jsonwebtoken |^9.0.0 |JWT token handling
+|bcrypt |^5.1.0 |Password hashing
+|joi |^17.9.0 |Input validation
+|pg |^8.11.0 |PostgreSQL client
+|cors |^2.8.5 |Cross-origin resource sharing
+|dotenv |^16.0.0 |Environment configuration
+|swagger-jsdoc |^6.2.8 |OpenAPI documentation
+|swagger-ui-express |^5.0.0 |API documentation UI
+|===
+
+== Troubleshooting
+
+**Database Connection Issues**
+[source,bash]
+
+---
+
+# Check database status
+
+npm run test:db
+
+# Verify connection string
+
+echo $DATABASE_URL
+
+# Check PostgreSQL service
+
+## systemctl status postgresql
+
+**OAuth Authentication Problems**
+[source,bash]
+
+---
+
+# Verify GitLab application settings
+
+curl -v "http://localhost:3003/api/v1/auth/gitlab/login"
+
+# Check redirect URI configuration
+
+echo $GITLAB_REDIRECT_URI
+
+# Test callback endpoint
+
+curl -X POST http://localhost:3003/api/v1/auth/callback \
+ -H "Content-Type: application/json" \
+ -d '{"code":"test-code"}'
+
+---
+
+**Token Issues**
+[source,bash]
+
+---
+
+# Verify JWT secrets are set
+
+echo $JWT_SECRET | wc -c # Should be > 32 characters
+
+# Test token refresh
+
+curl -X POST http://localhost:3003/api/v1/auth/refresh \
+ -H "Content-Type: application/json" \
+ -d '{"refreshToken":"your-refresh-token"}'
+
+---
