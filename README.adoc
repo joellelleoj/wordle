@@ -23,7 +23,7 @@ The Game Service is a microservice component of the Wordle application that hand
 |===
 
 == Test Coverage
-[cols="1,1,1,1"]
+[cols="1,1,1,1,1"]
 |===
 |Files |Statements |Branches |Functions | Lines
 
