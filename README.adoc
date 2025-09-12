@@ -49,11 +49,11 @@ The User Service is a microservice component of the Wordle application that hand
 |===
 |Component |Statements |Branches |Functions |Lines
 
-|All files |86.4% |69.56% |92.453% |86.21%
-|authController |88.1% |75.0% |95.0%
-|authService |83.33% |69.04% |88.57% | 83.33%
-|userDataAccessService |73.83% |64.28% |100% | 98.9%
-|Validation Utils |100% |100% |100% |100%
+|All files |86.4% |69.56% |92.45% |86.21%
+|authController |90.35% |70.37% |100% |90.35%
+|authService |73.82% |64.28% |78.94% | 73.82%
+|userDataAccessService |98.9% |78.57% |100% | 98.9%
+|Validation |100% |100% |100% |100%
 |===
 
 
