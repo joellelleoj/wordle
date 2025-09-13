@@ -161,7 +161,7 @@ export class ProfileDataAccess {
       "6": 0,
     };
 
-    distributionResult.rows.forEach((row) => {
+    distributionResult.rows.forEach((row: any) => {
       guessDistribution[row.attempts.toString()] = parseInt(row.count);
     });
 
@@ -203,7 +203,7 @@ export class ProfileDataAccess {
     let maxStreak = 0;
     let tempStreak = 0;
 
-    result.rows.forEach((row, index) => {
+    result.rows.forEach((row: any, index: number) => {
       if (row.won) {
         tempStreak++;
         if (index === 0) currentStreak = tempStreak;
@@ -263,7 +263,7 @@ export class ProfileDataAccess {
       [userId, limit, offset]
     );
 
-    return result.rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       ...this.mapGamePost(row),
       gameRecord: {
         id: row.game_record_id,
@@ -305,7 +305,7 @@ export class ProfileDataAccess {
 
     const result = await this.db.query(query, params);
 
-    return result.rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       ...this.mapGamePost(row),
       username: row.username,
     }));
@@ -458,7 +458,7 @@ export class ProfileDataAccess {
     params.push(limit, offset);
 
     const result = await this.db.query(sql, params);
-    return result.rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       ...this.mapGamePost(row),
       username: row.username,
     }));
