@@ -12,10 +12,6 @@ SET search_path TO profile_schema, user_schema, public;
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- =====================================================
--- USER SCHEMA TABLES
--- =====================================================
-
 -- Users table for authentication and basic user data
 CREATE TABLE user_schema.users (
     id SERIAL PRIMARY KEY,
@@ -47,10 +43,6 @@ CREATE TABLE user_schema.oauth_states (
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
--- =====================================================
--- PROFILE SCHEMA TABLES
--- =====================================================
 
 -- Game Records Table - stores individual completed games
 CREATE TABLE profile_schema.game_records (
@@ -99,10 +91,6 @@ CREATE TABLE profile_schema.user_stats (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- =====================================================
--- INDEXES FOR PERFORMANCE
--- =====================================================
-
 -- User schema indexes
 CREATE INDEX idx_users_username ON user_schema.users(username);
 CREATE INDEX idx_users_email ON user_schema.users(email);
@@ -122,10 +110,6 @@ CREATE INDEX idx_game_albums_created_at ON profile_schema.game_albums(created_at
 CREATE INDEX idx_game_albums_public ON profile_schema.game_albums(is_public) WHERE is_public = TRUE;
 CREATE INDEX idx_album_games_album_id ON profile_schema.album_games(album_id);
 CREATE INDEX idx_album_games_game_id ON profile_schema.album_games(game_id);
-
--- =====================================================
--- FUNCTIONS AND TRIGGERS
--- =====================================================
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

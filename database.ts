@@ -21,13 +21,11 @@ export class DatabaseSetup {
     if (process.env.DATABASE_URL) {
       return process.env.DATABASE_URL;
     }
-
-    const host = process.env.DB_HOST || "localhost";
-    const port = process.env.DB_PORT || "5432";
-    const database = process.env.DB_NAME || "wordle_users";
-    const username = process.env.DB_USER || "wordle_user";
-    const password = process.env.DB_PASSWORD || "secure_password";
-
+    const host = process.env.DB_HOST;
+    const port = process.env.DB_PORT;
+    const database = process.env.DB_NAME;
+    const username = process.env.DB_USER;
+    const password = process.env.DB_PASSWORD;
     return `postgresql://${username}:${password}@${host}:${port}/${database}`;
   }
 
@@ -47,14 +45,10 @@ export class DatabaseSetup {
 
   public async setupDatabase(): Promise<void> {
     console.log("Starting database setup...");
-    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-
     try {
       await this.testConnection();
       await this.executeSetupScript();
-      console.log("Database setup completed successfully");
     } catch (error) {
-      console.error("Database setup failed:", error);
       throw error;
     }
   }
@@ -65,8 +59,8 @@ export class DatabaseSetup {
         "SELECT NOW() as timestamp, version() as version"
       );
       console.log("Database connection successful");
-      console.log(`   Timestamp: ${result.rows[0].timestamp}`);
-      console.log(`   PostgreSQL: ${result.rows[0].version.split(",")[0]}`);
+      console.log(`Timestamp: ${result.rows[0].timestamp}`);
+      console.log(`PostgreSQL: ${result.rows[0].version.split(",")[0]}`);
     } catch (error) {
       console.error("Database connection failed:", error);
       throw error;
@@ -74,7 +68,7 @@ export class DatabaseSetup {
   }
 
   private async executeSetupScript(): Promise<void> {
-    console.log(" Executing database setup script...");
+    console.log("Executing database setup script...");
 
     const possiblePaths = [
       join(__dirname, "init", "setup.sql"),
@@ -94,18 +88,14 @@ export class DatabaseSetup {
       possiblePaths.forEach((path) => console.error(`   - ${path}`));
       throw new Error("Setup script not found");
     }
-
     console.log(` Using SQL script: ${scriptPath}`);
-
     try {
       const sqlContent = readFileSync(scriptPath, "utf8");
-
-      // Execute in a transaction for safety
       await this.pool.query("BEGIN");
       await this.pool.query(sqlContent);
       await this.pool.query("COMMIT");
 
-      console.log(" Setup script executed successfully");
+      console.log("Setup script executed successfully");
     } catch (error) {
       await this.pool.query("ROLLBACK");
       console.error(" Error executing setup script:", error);
@@ -114,24 +104,20 @@ export class DatabaseSetup {
   }
 
   public async verifySetup(): Promise<void> {
-    console.log(" Verifying database setup...");
+    console.log("Verifying database setup...");
 
     try {
-      // Check schemas
       const schemaCheck = await this.pool.query(`
         SELECT schema_name 
         FROM information_schema.schemata 
         WHERE schema_name IN ('user_schema', 'profile_schema')
         ORDER BY schema_name
       `);
-
       const foundSchemas = schemaCheck.rows.map((r) => r.schema_name);
       console.log(" Schemas found:", foundSchemas);
-
       if (foundSchemas.length !== 2) {
         throw new Error(`Expected 2 schemas, found ${foundSchemas.length}`);
       }
-
       // Check tables
       const tableCheck = await this.pool.query(`
         SELECT table_schema, table_name 
@@ -145,7 +131,6 @@ export class DatabaseSetup {
         console.log(`   - ${row.table_schema}.${row.table_name}`);
       });
 
-      // Verify essential tables exist
       const expectedTables = [
         "user_schema.users",
         "user_schema.user_sessions",
@@ -173,8 +158,7 @@ export class DatabaseSetup {
       const gameCount = await this.pool.query(
         "SELECT COUNT(*) FROM profile_schema.game_records"
       );
-
-      console.log(" Data verification:");
+      console.log("Data verification:");
       console.log(`   - Users: ${userCount.rows[0].count}`);
       console.log(`   - Game records: ${gameCount.rows[0].count}`);
 
@@ -187,11 +171,10 @@ export class DatabaseSetup {
 
   public async close(): Promise<void> {
     await this.pool.end();
-    console.log(" Database connection closed");
+    console.log("Database connection closed");
   }
 }
 
-// Main execution function
 async function main() {
   const setup = new DatabaseSetup();
 
@@ -206,7 +189,6 @@ async function main() {
   }
 }
 
-// Auto-run when executed directly
 if (require.main === module) {
   main();
 }
