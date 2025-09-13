@@ -1,4 +1,3 @@
-// api-gateway/src/routes/ProfileRoutes.ts - Fixed album-game routes
 import { Router, Request, Response, NextFunction } from "express";
 import axios from "axios";
 
