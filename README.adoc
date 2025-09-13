@@ -1,0 +1,77 @@
+= Wordle User Service
+
+== Overview
+
+The User Service is a microservice component of the Wordle application that handles user authentication, registration, and session management. It provides both traditional email/password authentication and OAuth2 integration with GitLab IMN.
+
+== API Endpoints
+
+[cols="1,2,3"]
+|===
+|Method |Endpoint |Description
+
+|GET |`/` |Service information and status
+|GET |`/health` |Service health check with database status
+|GET |`/api-docs` |Swagger UI documentation
+|GET |`/api-docs.json` |OpenAPI specification
+|POST |`/api/v1/auth/register` |Register new user with email/password
+|POST |`/api/v1/auth/login` |Login with username/password  
+|GET |`/api/v1/auth/gitlab/login` |Initiate GitLab OAuth flow
+|GET/POST |`/api/v1/auth/callback` |GitLab OAuth callback handler
+|POST |`/api/v1/auth/refresh` |Refresh JWT tokens
+|POST |`/api/v1/auth/logout` |Logout and invalidate tokens
+|GET |`/api/v1/auth/me` |Get current user info (requires auth)
+|===
+
+== Authentication Flow
+
+=== Traditional Registration/Login
+
+1. User registers with username, email, password via `/register`
+2. Server validates input, hashes password with bcrypt
+3. User record created in PostgreSQL database
+4. JWT access token (1 hour) and refresh token (7 days) returned
+5. Refresh token stored in database for session management
+
+=== GitLab OAuth Flow
+
+1. Frontend requests OAuth URL from `/gitlab/login`
+2. User redirects to GitLab IMN authorization server
+3. GitLab redirects back to `/callback` with authorization code
+4. Server exchanges code for GitLab access token
+5. Server fetches user info from GitLab API
+6. User created or updated in local database
+7. JWT tokens issued and returned to client
+
+== Test Coverage
+
+[cols="1,1,1,1,1"]
+|===
+|Component |Statements |Branches |Functions |Lines
+
+|All files |86.4% |69.56% |92.453% |86.21%
+|authController |88.1% |75.0% |95.0%
+|authService |83.33% |69.04% |88.57% | 83.33%
+|userDataAccessService |73.83% |64.28% |100% | 98.9%
+|Validation Utils |100% |100% |100% |100%
+|===
+
+
+== Local Deployment
+[source,bash]
+----
+# Using  script
+./run-local.sh
+
+# Manual execution  
+npm install
+npm dev
+
+# Run tests
+npm test
+npm run test:coverag
+
+# Access points
+curl http://localhost:3002/health
+open http://localhost:3002/api-docs
+----

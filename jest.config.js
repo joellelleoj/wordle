@@ -20,12 +20,12 @@ module.exports = {
     "!src/**/*.d.ts",
     "!src/__tests__/**",
     "!src/tests/**",
-    "!src/index.ts", // Main entry point - typically not unit tested
-    "!src/swagger/**", // Swagger configuration - documentation only
-    "!src/test/**", // Test utilities/database connection tests
-    "!src/middleware/authMiddleware.ts", // Will be integration tested separately
-    "!src/routes/authRoutes.ts", // Route definitions - tested through controller tests
-    "!src/database/connection.ts", // Route definitions - tested through controller tests
+    "!src/index.ts",
+    "!src/swagger/**",
+    "!src/test/**",
+    "!src/middleware/authMiddleware.ts",
+    "!src/routes/authRoutes.ts",
+    "!src/database/connection.ts",
   ],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
@@ -39,20 +39,16 @@ module.exports = {
   },
   setupFilesAfterEnv: ["<rootDir>/src/tests/setup.ts"],
   testTimeout: 30000,
-  verbose: false, // Reduce output noise
+  verbose: false,
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  // Performance optimizations
   maxWorkers: "50%",
   cache: true,
-  // Error handling
-  bail: false, // Don't stop on first failure
+  bail: false,
   forceExit: true,
   detectOpenHandles: true,
-  // Silent mode to reduce console noise
   silent: false,
-  // Mock modules globally
   moduleNameMapping: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
