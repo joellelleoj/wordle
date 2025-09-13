@@ -1,34 +1,64 @@
-import { User } from "./user";
+// types/auth.ts - Authentication type definitions
+export interface User {
+  id: string | number;
+  username: string;
+  email: string;
+  gitlab_id?: number;
+  created_at: string;
+}
 
 export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterData {
+  username: string;
   email: string;
   password: string;
 }
 
-export interface RegisterCredentials extends LoginCredentials {
-  username: string;
-  displayName?: string;
-  confirmPassword: string;
-}
-
 export interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
-  expiresIn: number;
+  success: boolean;
+  message?: string;
+  data?: {
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+  };
 }
 
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  error: string | null;
+// Additional types for profile service integration
+export interface GameRecord {
+  gameId: string;
+  word: string;
+  targetWord?: string;
+  guesses: string[];
+  won: boolean;
+  attempts: number;
+  date: string;
+  completedAt?: string;
+  createdAt?: string;
 }
 
-export interface OAuth2Config {
-  clientId: string;
-  redirectUri: string;
-  scope: string;
-  responseType: string;
+export interface UserStats {
+  totalGames: number;
+  wins: number;
+  winRate: number;
+  currentStreak: number;
+  maxStreak: number;
+  averageAttempts: number;
+  guessDistribution: { [attempts: string]: number };
+  lastPlayedAt?: Date | null;
+}
+
+export interface GameAlbum {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  isPublic: boolean;
+  gameIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }

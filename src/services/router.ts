@@ -1,12 +1,4 @@
-// services/router.ts - Fixed router with less aggressive security
-export type Page = "game" | "login" | "register" | "profile";
-
-export interface RouteState {
-  page: Page;
-  gameId?: string;
-  albumId?: string;
-  isAuthenticated?: boolean;
-}
+import { Page, RouteState } from "../types/game";
 
 class RouterService {
   private currentRoute: RouteState = { page: "game" };

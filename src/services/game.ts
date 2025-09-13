@@ -1,3 +1,5 @@
+import { GameState, GuessResponse } from "@/types/game";
+
 // services/game.ts - Fixed for browser compatibility
 const getApiUrl = (): string => {
   // In production (deployed), use relative paths
@@ -12,27 +14,6 @@ const getApiUrl = (): string => {
 };
 
 const API_URL = getApiUrl();
-
-export interface GameState {
-  gameId: string;
-  board: string[][];
-  evaluations: ("correct" | "present" | "absent" | null)[][];
-  currentRow: number;
-  gameOver: boolean;
-  won: boolean;
-  attempts: number;
-  guesses: string[];
-}
-
-export interface GuessResponse {
-  valid: boolean;
-  result?: ("correct" | "present" | "absent")[];
-  gameOver?: boolean;
-  won?: boolean;
-  solution?: string;
-  gameState?: GameState;
-  error?: string;
-}
 
 class GameService {
   // create new game

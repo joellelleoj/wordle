@@ -1,66 +1,77 @@
-import React, { useEffect, useState } from "react";
-import { profileService, GameRecord } from "../../services/profile";
-import { authService, User } from "../../services/auth";
+import { memo, useCallback } from "react";
+import { GameHistoryProps } from "../../types/index";
+import { GameVisualization } from "./GameVisualization";
+import {
+  generateGameVisualization,
+  formatGameDate,
+} from "../../utils/gameUtils";
+import { LoadingSpinner } from "../layout/LoadingSpinner";
+import "./GameHistory.css";
 
-export const GameHistory: React.FC = () => {
-  const [gameHistory, setGameHistory] = useState<GameRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+const GameHistory = memo<GameHistoryProps>(
+  ({ games, loading = false, onGameSelect, showPagination = false }) => {
+    const handleGameClick = useCallback(
+      (gameId: string) => {
+        onGameSelect?.(gameId);
+      },
+      [onGameSelect]
+    );
 
-  useEffect(() => {
-    const loadGameHistory = async () => {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
-
-      setUser(currentUser);
-      setLoading(true);
-
-      try {
-        // Fix: Convert number to string for API call
-        const gameHistory = await profileService.getGameHistory(
-          currentUser.id.toString()
-        );
-        setGameHistory(gameHistory);
-      } catch (error) {
-        console.error("Failed to load game history:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadGameHistory();
-  }, []);
-
-  if (loading) return <div>Loading game history...</div>;
-
-  if (!user) return <div>Please log in to view game history.</div>;
-
-  return (
-    <div className="game-history">
-      <h3>Game History</h3>
-      {gameHistory.length === 0 ? (
-        <p>No games played yet!</p>
-      ) : (
-        <div className="history-list">
-          {gameHistory.map((game) => (
-            <div key={game.id} className="history-item">
-              <div className="game-word">{game.word}</div>
-              <div className="game-result">
-                <span className={`result-badge ${game.won ? "won" : "lost"}`}>
-                  {game.won ? "Won" : "Lost"}
-                </span>
-                <span className="guess-count">{game.guesses} guesses</span>
-              </div>
-              <div className="game-date">
-                {new Date(game.date).toLocaleDateString()}
-              </div>
-            </div>
-          ))}
+    if (loading) {
+      return (
+        <div className="gameHistory">
+          <LoadingSpinner size="large" />
         </div>
-      )}
-    </div>
-  );
-};
+      );
+    }
+
+    if (games.length === 0) {
+      return (
+        <div className="gameHistory">
+          <div className="emptyState">
+            <h3>No games played yet</h3>
+            <p>Start playing to see your game history!</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="gameHistory">
+        <div className="gameList">
+          {games.map((game) => {
+            const visualization = generateGameVisualization(game);
+            return (
+              <div
+                key={game.gameId}
+                className="gameItem"
+                onClick={() => handleGameClick(game.gameId)}
+                role={onGameSelect ? "button" : undefined}
+                tabIndex={onGameSelect ? 0 : undefined}
+              >
+                <div className="gameHeader">
+                  <div className="gameDate">
+                    {formatGameDate(game.completedAt)}
+                  </div>
+                </div>
+                <GameVisualization
+                  visualization={visualization}
+                  size="small"
+                  interactive={false}
+                />
+              </div>
+            );
+          })}
+        </div>
+        {showPagination && (
+          <div className="pagination">
+            {/* Pagination controls would go here */}
+            <p className="gameCount">Showing {games.length} games</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+export { GameHistory };

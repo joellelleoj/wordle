@@ -1,4 +1,1493 @@
-// services/auth.ts - Fixed session persistence and validation
+// services/auth.ts - FIXED: Improved OAuth callback handling
+import { User, LoginCredentials, RegisterData, AuthResponse } from "../types";
+import { logger } from "../utils/logger";
+
+class AuthService {
+  private readonly ACCESS_TOKEN_KEY = "wordle_access_token";
+  private readonly REFRESH_TOKEN_KEY = "wordle_refresh_token";
+  private readonly USER_KEY = "wordle_user";
+  private readonly baseURL: string;
+  private refreshPromise: Promise<boolean> | null = null;
+
+  constructor() {
+    this.baseURL = this.getApiBaseUrl();
+    this.setupTokenRefresh();
+    this.initializeFromStorage();
+  }
+
+  private getApiBaseUrl(): string {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost"
+    ) {
+      return "/dev11/api";
+    }
+    return "http://localhost:8002/api";
+  }
+
+  private initializeFromStorage(): void {
+    try {
+      const token = this.getAccessToken();
+      const user = this.getCurrentUser();
+
+      if (token && user) {
+        logger.info("Auth state restored from storage", {
+          username: user.username,
+        });
+      }
+    } catch (error) {
+      logger.error("Failed to initialize auth from storage", { error });
+      this.clearStorage();
+    }
+  }
+
+  // FIXED: More precise OAuth callback detection
+  isOAuthCallback(): boolean {
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+
+    // Only consider it an OAuth callback if we have specific OAuth markers
+    const isExactOAuthPath = currentPath === "/oauth/success";
+    const hasValidOAuthData =
+      currentSearch.includes("data=") &&
+      this.isValidOAuthDataFormat(currentSearch);
+    const hasOAuthError =
+      currentSearch.includes("error=") &&
+      (currentSearch.includes("oauth") ||
+        currentSearch.includes("access_denied"));
+
+    const result = isExactOAuthPath || hasValidOAuthData || hasOAuthError;
+
+    if (result) {
+      logger.info("Valid OAuth callback detected", {
+        path: currentPath,
+        hasData: hasValidOAuthData,
+        hasError: hasOAuthError,
+      });
+    }
+
+    return result;
+  }
+
+  // Helper to validate OAuth data format
+  private isValidOAuthDataFormat(search: string): boolean {
+    try {
+      const urlParams = new URLSearchParams(search);
+      const oauthData = urlParams.get("data");
+
+      if (!oauthData) return false;
+
+      // Try to parse the OAuth data to verify it's valid
+      const decodedData = decodeURIComponent(oauthData);
+      const parsedData = JSON.parse(decodedData);
+
+      // Check if it has the expected OAuth structure
+      return !!(
+        parsedData &&
+        (parsedData.success !== undefined || parsedData.data)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // FIXED: Improved OAuth success processing with better state management
+  async processOAuthSuccess(): Promise<AuthResponse | null> {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthData = urlParams.get("data");
+      const oauthError = urlParams.get("error");
+
+      if (oauthError) {
+        logger.error("OAuth error received", { error: oauthError });
+        this.cleanupOAuthURL();
+        return {
+          success: false,
+          message: `OAuth login failed: ${oauthError}`,
+        };
+      }
+
+      if (oauthData) {
+        logger.info("Processing OAuth success data");
+
+        try {
+          const authData = JSON.parse(decodeURIComponent(oauthData));
+
+          if (authData.success && authData.data) {
+            const userData = {
+              ...authData.data.user,
+              id: authData.data.user.id.toString(),
+            };
+
+            // FIXED: Store auth data immediately and trigger storage events
+            this.storeAuthDataWithEvents(
+              authData.data.accessToken,
+              authData.data.refreshToken,
+              userData
+            );
+
+            logger.info("OAuth authentication successful", {
+              username: userData.username,
+              gitlab_id: userData.gitlab_id,
+            });
+
+            // Clean up URL after successful processing
+            this.cleanupOAuthURL();
+
+            return {
+              success: true,
+              data: {
+                user: userData,
+                accessToken: authData.data.accessToken,
+                refreshToken: authData.data.refreshToken,
+              },
+              message: "OAuth login successful",
+            };
+          } else {
+            logger.error("Invalid OAuth response structure", { authData });
+            this.cleanupOAuthURL();
+            return {
+              success: false,
+              message: "Invalid OAuth response. Please try again.",
+            };
+          }
+        } catch (parseError) {
+          logger.error("Failed to parse OAuth data", { error: parseError });
+          this.cleanupOAuthURL();
+          return {
+            success: false,
+            message: "Failed to process OAuth response. Please try again.",
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      logger.error("OAuth processing error", { error });
+      this.cleanupOAuthURL();
+      return {
+        success: false,
+        message: "OAuth processing failed. Please try again.",
+      };
+    }
+  }
+
+  // FIXED: Store auth data and trigger storage events for proper state sync
+  private storeAuthDataWithEvents(
+    accessToken: string,
+    refreshToken: string,
+    user: User
+  ): void {
+    try {
+      const userWithStringId = {
+        ...user,
+        id: user.id.toString(),
+      };
+
+      // Store the data
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+      localStorage.setItem(this.USER_KEY, JSON.stringify(userWithStringId));
+
+      // FIXED: Trigger storage events manually for same-window updates
+      // (storage events don't fire in the same window that made the change)
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: this.ACCESS_TOKEN_KEY,
+          newValue: accessToken,
+          url: window.location.href,
+        })
+      );
+
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: this.USER_KEY,
+          newValue: JSON.stringify(userWithStringId),
+          url: window.location.href,
+        })
+      );
+
+      logger.debug("Auth data stored with events triggered", {
+        username: userWithStringId.username,
+        id: userWithStringId.id,
+      });
+    } catch (error) {
+      logger.error("Failed to store auth data", { error });
+      throw new Error("Failed to store authentication data");
+    }
+  }
+
+  private cleanupOAuthURL(): void {
+    try {
+      // Use replaceState to clean up the URL without affecting browser history
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      logger.debug("OAuth URL cleaned up");
+    } catch (error) {
+      logger.error("Failed to clean up OAuth URL", { error });
+    }
+  }
+
+  // GitLab OAuth initiation
+  async initiateGitLabAuth(): Promise<string> {
+    try {
+      logger.info("Initiating GitLab OAuth");
+      const response = await this.makeRequest<{ authUrl: string }>(
+        "/users/auth/gitlab/login"
+      );
+
+      if (response && response.authUrl) {
+        logger.info("GitLab auth URL received");
+        return response.authUrl;
+      }
+      throw new Error("Failed to get GitLab authorization URL");
+    } catch (error) {
+      logger.error("GitLab auth initiation failed", { error });
+      throw new Error("Failed to initiate GitLab login");
+    }
+  }
+
+  // Traditional login
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      logger.info("Login attempt", { username: credentials.username });
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(credentials),
+        }
+      );
+
+      if (response.success && response.data) {
+        const userData = {
+          ...response.data.user,
+          id: response.data.user.id.toString(),
+        };
+
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          userData
+        );
+        logger.info("Login successful", { username: userData.username });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Login failed", { username: credentials.username, error });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Login failed",
+      };
+    }
+  }
+
+  // Registration
+  async register(userData: RegisterData): Promise<AuthResponse> {
+    try {
+      logger.info("Registration attempt", { username: userData.username });
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify(userData),
+        }
+      );
+
+      if (response.success && response.data) {
+        const userDataWithStringId = {
+          ...response.data.user,
+          id: response.data.user.id.toString(),
+        };
+
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          userDataWithStringId
+        );
+        logger.info("Registration successful", {
+          username: userDataWithStringId.username,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Registration failed", {
+        username: userData.username,
+        error,
+      });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Registration failed",
+      };
+    }
+  }
+
+  // Helper methods
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    const token = this.getAccessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options.headers,
+      },
+    };
+
+    logger.debug("API request", { method: config.method || "GET", url });
+
+    let response = await fetch(url, config);
+
+    // Handle token expiration with automatic refresh
+    if (
+      response.status === 401 &&
+      this.getRefreshToken() &&
+      !endpoint.includes("refresh")
+    ) {
+      logger.info("Access token expired, attempting refresh");
+      const refreshed = await this.refreshAccessToken();
+
+      if (refreshed) {
+        config.headers = {
+          ...this.getHeaders(),
+          ...options.headers,
+        };
+        response = await fetch(url, config);
+      } else {
+        this.clearStorage();
+        throw new Error("Session expired. Please log in again.");
+      }
+    }
+
+    if (!response.ok) {
+      let errorData: any;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP ${response.status}` };
+      }
+
+      const errorMessage =
+        errorData?.message || `Request failed: ${response.status}`;
+      logger.error("API request failed", {
+        url,
+        status: response.status,
+        message: errorMessage,
+      });
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  }
+
+  // Token management
+  private async refreshAccessToken(): Promise<boolean> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.performTokenRefresh();
+    const result = await this.refreshPromise;
+    this.refreshPromise = null;
+    return result;
+  }
+
+  private async performTokenRefresh(): Promise<boolean> {
+    try {
+      const refreshToken = this.getRefreshToken();
+      if (!refreshToken) {
+        return false;
+      }
+
+      const response = await fetch(`${this.baseURL}/users/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const result = await response.json();
+      if (result.success && result.data?.accessToken) {
+        localStorage.setItem(this.ACCESS_TOKEN_KEY, result.data.accessToken);
+        if (result.data.refreshToken) {
+          localStorage.setItem(
+            this.REFRESH_TOKEN_KEY,
+            result.data.refreshToken
+          );
+        }
+        logger.info("Access token refreshed successfully");
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      logger.error("Token refresh failed", { error });
+      return false;
+    }
+  }
+
+  private setupTokenRefresh(): void {
+    setInterval(() => {
+      const token = this.getAccessToken();
+      if (token && this.isTokenExpiringSoon(token)) {
+        this.refreshAccessToken();
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  private isTokenExpiringSoon(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const expirationTime = payload.exp * 1000;
+      const currentTime = Date.now();
+      const timeUntilExpiry = expirationTime - currentTime;
+      return timeUntilExpiry < 10 * 60 * 1000;
+    } catch {
+      return false;
+    }
+  }
+
+  // Authentication state
+  isAuthenticated(): boolean {
+    const token = this.getAccessToken();
+    const user = this.getCurrentUser();
+    return !!(token && user);
+  }
+
+  getCurrentUser(): User | null {
+    try {
+      const userStr = localStorage.getItem(this.USER_KEY);
+      if (!userStr) return null;
+
+      const user = JSON.parse(userStr);
+      if (!user || !user.id || !user.username) {
+        logger.warn("Invalid user data in storage");
+        this.clearStorage();
+        return null;
+      }
+
+      return {
+        ...user,
+        id: user.id.toString(),
+      };
+    } catch (error) {
+      logger.error("Failed to parse stored user", { error });
+      this.clearStorage();
+      return null;
+    }
+  }
+
+  getAccessToken(): string | null {
+    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+  }
+
+  private getRefreshToken(): string | null {
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+  }
+
+  private storeAuthData(
+    accessToken: string,
+    refreshToken: string,
+    user: User
+  ): void {
+    try {
+      const userWithStringId = {
+        ...user,
+        id: user.id.toString(),
+      };
+
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+      localStorage.setItem(this.USER_KEY, JSON.stringify(userWithStringId));
+
+      logger.debug("Auth data stored successfully", {
+        username: userWithStringId.username,
+        id: userWithStringId.id,
+      });
+    } catch (error) {
+      logger.error("Failed to store auth data", { error });
+      throw new Error("Failed to store authentication data");
+    }
+  }
+
+  private clearStorage(): void {
+    try {
+      localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+      logger.debug("Auth storage cleared");
+    } catch (error) {
+      logger.error("Failed to clear auth storage", { error });
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      if (this.isAuthenticated()) {
+        const refreshToken = this.getRefreshToken();
+        if (refreshToken) {
+          await this.makeRequest("/users/auth/logout", {
+            method: "POST",
+            body: JSON.stringify({ refreshToken }),
+          });
+        }
+        logger.info("Logout request completed");
+      }
+    } catch (error) {
+      logger.error("Logout request failed", { error });
+    } finally {
+      this.clearStorage();
+      logger.info("User logged out and storage cleared");
+    }
+  }
+}
+
+export const authService = new AuthService();
+
+/*// services/auth.ts - FIXED: Proper OAuth detection and initialization
+import { User, LoginCredentials, RegisterData, AuthResponse } from "../types";
+import { logger } from "../utils/logger";
+
+class AuthService {
+  private readonly ACCESS_TOKEN_KEY = "wordle_access_token";
+  private readonly REFRESH_TOKEN_KEY = "wordle_refresh_token";
+  private readonly USER_KEY = "wordle_user";
+
+  private readonly baseURL: string;
+  private authCache: {
+    user: User | null;
+    isAuthenticated: boolean;
+    lastCheck: number;
+    token: string | null;
+  } = {
+    user: null,
+    isAuthenticated: false,
+    lastCheck: 0,
+    token: null,
+  };
+
+  private readonly CACHE_DURATION = 30000;
+
+  constructor() {
+    this.baseURL = this.getApiBaseUrl();
+    // Initialize auth state ONCE
+    this.initializeAuthState();
+  }
+
+  private getApiBaseUrl(): string {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost"
+    ) {
+      return "/dev11/api";
+    }
+    return "http://localhost:8002/api";
+  }
+
+  private initializeAuthState(): void {
+    try {
+      const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+      const userStr = localStorage.getItem(this.USER_KEY);
+
+      if (token && userStr) {
+        const user = JSON.parse(userStr);
+        if (user && user.id && user.username) {
+          this.authCache = {
+            user,
+            isAuthenticated: true,
+            lastCheck: Date.now(),
+            token,
+          };
+          logger.debug("Auth state initialized from storage", {
+            username: user.username,
+          });
+        }
+      }
+    } catch (error) {
+      logger.error("Failed to initialize auth state", { error });
+      this.clearStorage();
+    }
+  }
+
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    const token = this.getAccessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options.headers,
+      },
+    };
+
+    logger.debug("API request", { method: config.method || "GET", url });
+
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        logger.warn("Authentication failed or token expired");
+        this.clearStorage();
+        throw new Error("Authentication required. Please log in again.");
+      }
+
+      let errorData: any;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP ${response.status}` };
+      }
+
+      const errorMessage =
+        errorData?.message || `Request failed: ${response.status}`;
+      logger.error("API request failed", {
+        url,
+        status: response.status,
+        message: errorMessage,
+      });
+      throw new Error(errorMessage);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    } else {
+      return (await response.text()) as T;
+    }
+  }
+
+  // FIXED: More precise OAuth callback detection
+  isOAuthCallback(): boolean {
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+
+    // Only true if we're explicitly on OAuth success page
+    const isOAuthPath = currentPath === "/oauth/success";
+
+    // OR if we have OAuth-specific parameters (but not just any parameters)
+    const hasOAuthData =
+      currentSearch.includes("data=") && currentSearch.includes("success");
+    const hasOAuthError =
+      currentSearch.includes("error=") &&
+      (currentSearch.includes("oauth") || currentSearch.includes("auth"));
+
+    const result = isOAuthPath || hasOAuthData || hasOAuthError;
+
+    if (result) {
+      logger.info("OAuth callback detected", {
+        path: currentPath,
+        search: currentSearch.substring(0, 50),
+        isOAuthPath,
+        hasOAuthData,
+        hasOAuthError,
+      });
+    }
+
+    return result;
+  }
+
+  // Process OAuth success callback
+  async processOAuthSuccess(): Promise<AuthResponse | null> {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthData = urlParams.get("data");
+      const oauthError = urlParams.get("error");
+      const oauthCode = urlParams.get("code");
+
+      if (oauthError) {
+        logger.error("OAuth error received", { error: oauthError });
+        this.cleanupOAuthURL();
+        return {
+          success: false,
+          message: `OAuth login failed: ${oauthError}`,
+        };
+      }
+
+      if (oauthData) {
+        logger.info("Processing OAuth success data");
+
+        try {
+          const authData = JSON.parse(decodeURIComponent(oauthData));
+
+          if (authData.success && authData.data) {
+            this.storeAuthData(
+              authData.data.accessToken,
+              authData.data.refreshToken,
+              authData.data.user
+            );
+
+            logger.info("OAuth authentication successful", {
+              username: authData.data.user.username,
+            });
+
+            this.cleanupOAuthURL();
+
+            return {
+              success: true,
+              data: authData.data,
+              message: "OAuth login successful",
+            };
+          } else {
+            logger.error("Invalid OAuth response structure", { authData });
+            this.cleanupOAuthURL();
+            return {
+              success: false,
+              message: "Invalid OAuth response. Please try again.",
+            };
+          }
+        } catch (parseError) {
+          logger.error("Failed to parse OAuth data", { error: parseError });
+          this.cleanupOAuthURL();
+          return {
+            success: false,
+            message: "Failed to process OAuth response. Please try again.",
+          };
+        }
+      }
+
+      if (oauthCode) {
+        // Handle OAuth code flow here if needed
+        logger.info("OAuth code received", {
+          code: oauthCode.substring(0, 10) + "...",
+        });
+        this.cleanupOAuthURL();
+        return {
+          success: false,
+          message: "OAuth code flow not implemented yet",
+        };
+      }
+
+      return null;
+    } catch (error) {
+      logger.error("OAuth processing error", { error });
+      this.cleanupOAuthURL();
+      return {
+        success: false,
+        message: "OAuth processing failed. Please try again.",
+      };
+    }
+  }
+
+  private cleanupOAuthURL(): void {
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      logger.debug("OAuth URL cleaned up");
+    } catch (error) {
+      logger.error("Failed to clean up OAuth URL", { error });
+    }
+  }
+
+  async register(userData: RegisterData): Promise<AuthResponse> {
+    try {
+      logger.info("Registration attempt", { username: userData.username });
+
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify(userData),
+        }
+      );
+
+      if (response.success && response.data) {
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          response.data.user
+        );
+        logger.info("Registration successful", {
+          username: response.data.user.username,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Registration failed", {
+        username: userData.username,
+        error,
+      });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Registration failed",
+      };
+    }
+  }
+
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      logger.info("Login attempt", { username: credentials.username });
+
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(credentials),
+        }
+      );
+
+      if (response.success && response.data) {
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          response.data.user
+        );
+        logger.info("Login successful", {
+          username: response.data.user.username,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Login failed", { username: credentials.username, error });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Login failed",
+      };
+    }
+  }
+
+  async initiateGitLabAuth(): Promise<string> {
+    try {
+      logger.info("Initiating GitLab OAuth");
+
+      const response = await this.makeRequest<{ authUrl: string }>(
+        "/users/auth/gitlab/login"
+      );
+
+      if (response && response.authUrl) {
+        logger.info("GitLab auth URL received");
+        return response.authUrl;
+      }
+
+      throw new Error("Failed to get GitLab authorization URL");
+    } catch (error) {
+      logger.error("GitLab auth initiation failed", { error });
+      throw new Error("Failed to initiate GitLab login");
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      if (this.isAuthenticated()) {
+        await this.makeRequest("/users/auth/logout", { method: "POST" });
+        logger.info("Logout request completed");
+      }
+    } catch (error) {
+      logger.error("Logout request failed", { error });
+    } finally {
+      this.clearStorage();
+      logger.info("User logged out and storage cleared");
+    }
+  }
+
+  // Simplified authentication check
+  isAuthenticated(): boolean {
+    const now = Date.now();
+
+    // Use cache if recent
+    if (now - this.authCache.lastCheck < this.CACHE_DURATION) {
+      return this.authCache.isAuthenticated;
+    }
+
+    const token = this.getAccessToken();
+    const user = this.getCurrentUser();
+    const isAuth = !!(token && user);
+
+    // Update cache
+    this.authCache = {
+      user,
+      isAuthenticated: isAuth,
+      lastCheck: now,
+      token,
+    };
+
+    return isAuth;
+  }
+
+  getCurrentUser(): User | null {
+    // Use cache if recent
+    const now = Date.now();
+    if (
+      now - this.authCache.lastCheck < this.CACHE_DURATION &&
+      this.authCache.user
+    ) {
+      return this.authCache.user;
+    }
+
+    try {
+      const userStr = localStorage.getItem(this.USER_KEY);
+      if (!userStr) return null;
+
+      const user = JSON.parse(userStr);
+
+      if (!user || !user.id || !user.username) {
+        logger.warn("Invalid user data in storage");
+        this.clearStorage();
+        return null;
+      }
+
+      // Update cache
+      this.authCache.user = user;
+      this.authCache.lastCheck = now;
+
+      return user;
+    } catch (error) {
+      logger.error("Failed to parse stored user", { error });
+      this.clearStorage();
+      return null;
+    }
+  }
+
+  getAccessToken(): string | null {
+    const now = Date.now();
+    if (
+      now - this.authCache.lastCheck < this.CACHE_DURATION &&
+      this.authCache.token
+    ) {
+      return this.authCache.token;
+    }
+
+    const token = localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    this.authCache.token = token;
+    return token;
+  }
+
+  private storeAuthData(
+    accessToken: string,
+    refreshToken: string,
+    user: User
+  ): void {
+    try {
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+
+      // Update cache immediately
+      this.authCache = {
+        user,
+        isAuthenticated: true,
+        lastCheck: Date.now(),
+        token: accessToken,
+      };
+
+      logger.debug("Auth data stored successfully", {
+        username: user.username,
+      });
+    } catch (error) {
+      logger.error("Failed to store auth data", { error });
+      throw new Error("Failed to store authentication data");
+    }
+  }
+
+  private clearStorage(): void {
+    try {
+      localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+
+      // Clear cache
+      this.authCache = {
+        user: null,
+        isAuthenticated: false,
+        lastCheck: Date.now(),
+        token: null,
+      };
+
+      logger.debug("Auth storage cleared");
+    } catch (error) {
+      logger.error("Failed to clear auth storage", { error });
+    }
+  }
+}
+
+export const authService = new AuthService();
+/*import { User, LoginCredentials, RegisterData, AuthResponse } from "../types";
+import { logger } from "../utils/logger";
+
+class AuthService {
+  private readonly ACCESS_TOKEN_KEY = "wordle_access_token";
+  private readonly REFRESH_TOKEN_KEY = "wordle_refresh_token";
+  private readonly USER_KEY = "wordle_user";
+
+  private readonly baseURL: string;
+
+  constructor() {
+    this.baseURL = this.getApiBaseUrl();
+  }
+
+  private getApiBaseUrl(): string {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost"
+    ) {
+      return "/dev11/api";
+    }
+    return "http://localhost:8002/api";
+  }
+
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    const token = this.getAccessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options.headers,
+      },
+    };
+
+    logger.debug("API request", { method: config.method || "GET", url });
+
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        logger.warn("Authentication failed or token expired");
+        this.clearStorage();
+        throw new Error("Authentication required. Please log in again.");
+      }
+
+      let errorData: any;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP ${response.status}` };
+      }
+
+      const errorMessage =
+        errorData?.message || `Request failed: ${response.status}`;
+      logger.error("API request failed", {
+        url,
+        status: response.status,
+        message: errorMessage,
+      });
+      throw new Error(errorMessage);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    } else {
+      return (await response.text()) as T;
+    }
+  }
+
+  // =============================================================================
+  // FIXED OAuth Callback Handling
+  // =============================================================================
+
+  
+   * FIXED: Process OAuth success data from URL parameters
+   * This handles the OAuth redirect from the backend
+   
+  async processOAuthSuccess(): Promise<AuthResponse | null> {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthData = urlParams.get("data");
+      const oauthError = urlParams.get("error");
+
+      // Handle OAuth error
+      if (oauthError) {
+        logger.error("OAuth error received", { error: oauthError });
+        this.clearStorage();
+
+        // Clean up URL immediately
+        this.cleanupOAuthURL();
+
+        return {
+          success: false,
+          message: `OAuth login failed: ${oauthError}`,
+        };
+      }
+
+      // Handle OAuth success
+      if (oauthData && window.location.pathname === "/oauth/success") {
+        logger.info("Processing OAuth success data");
+
+        try {
+          const authData = JSON.parse(decodeURIComponent(oauthData));
+
+          if (authData.success && authData.data) {
+            // Store authentication data
+            this.storeAuthData(
+              authData.data.accessToken,
+              authData.data.refreshToken,
+              authData.data.user
+            );
+
+            logger.info("OAuth authentication successful", {
+              username: authData.data.user.username,
+            });
+
+            // Clean up URL
+            this.cleanupOAuthURL();
+
+            return {
+              success: true,
+              data: authData.data,
+              message: "OAuth login successful",
+            };
+          } else {
+            logger.error("Invalid OAuth response structure", { authData });
+            this.clearStorage();
+            this.cleanupOAuthURL();
+
+            return {
+              success: false,
+              message: "Invalid OAuth response. Please try again.",
+            };
+          }
+        } catch (parseError) {
+          logger.error("Failed to parse OAuth data", { error: parseError });
+          this.clearStorage();
+          this.cleanupOAuthURL();
+
+          return {
+            success: false,
+            message: "Failed to process OAuth response. Please try again.",
+          };
+        }
+      }
+
+      return null; // No OAuth data to process
+    } catch (error) {
+      logger.error("OAuth processing error", { error });
+      this.clearStorage();
+      this.cleanupOAuthURL();
+
+      return {
+        success: false,
+        message: "OAuth processing failed. Please try again.",
+      };
+    }
+  }
+
+
+  private cleanupOAuthURL(): void {
+    try {
+      // Replace current URL without OAuth parameters
+      const cleanURL = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanURL);
+      logger.debug("OAuth URL cleaned up");
+    } catch (error) {
+      logger.error("Failed to clean up OAuth URL", { error });
+    }
+  }
+
+ 
+  isOAuthCallback(): boolean {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthData = urlParams.has("data") || urlParams.has("error");
+    const isOAuthPath = window.location.pathname === "/oauth/success";
+
+    return hasOAuthData && isOAuthPath;
+  }
+
+  // =============================================================================
+  // Standard Authentication Methods
+  // =============================================================================
+
+  async register(userData: RegisterData): Promise<AuthResponse> {
+    try {
+      logger.info("Registration attempt", { username: userData.username });
+
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify(userData),
+        }
+      );
+
+      if (response.success && response.data) {
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          response.data.user
+        );
+        logger.info("Registration successful", {
+          username: response.data.user.username,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Registration failed", {
+        username: userData.username,
+        error,
+      });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Registration failed",
+      };
+    }
+  }
+
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      logger.info("Login attempt", { username: credentials.username });
+
+      const response = await this.makeRequest<AuthResponse>(
+        "/users/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(credentials),
+        }
+      );
+
+      if (response.success && response.data) {
+        this.storeAuthData(
+          response.data.accessToken,
+          response.data.refreshToken,
+          response.data.user
+        );
+        logger.info("Login successful", {
+          username: response.data.user.username,
+        });
+      }
+
+      return response;
+    } catch (error) {
+      logger.error("Login failed", { username: credentials.username, error });
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Login failed",
+      };
+    }
+  }
+
+
+  async initiateGitLabAuth(): Promise<string> {
+    try {
+      logger.info("Initiating GitLab OAuth");
+
+      const response = await this.makeRequest<{ authUrl: string }>(
+        "/users/auth/gitlab/login"
+      );
+
+      if (response && response.authUrl) {
+        logger.info("GitLab auth URL received");
+        return response.authUrl;
+      }
+
+      throw new Error("Failed to get GitLab authorization URL");
+    } catch (error) {
+      logger.error("GitLab auth initiation failed", { error });
+      throw new Error("Failed to initiate GitLab login");
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      if (this.isAuthenticated()) {
+        await this.makeRequest("/users/auth/logout", { method: "POST" });
+        logger.info("Logout request completed");
+      }
+    } catch (error) {
+      logger.error("Logout request failed", { error });
+    } finally {
+      this.clearStorage();
+      logger.info("User logged out and storage cleared");
+    }
+  }
+
+  async refreshToken(): Promise<boolean> {
+    try {
+      const refreshToken = this.getRefreshToken();
+      if (!refreshToken) {
+        this.clearStorage();
+        return false;
+      }
+
+      const response = await this.makeRequest<{
+        success: boolean;
+        data?: {
+          accessToken: string;
+          refreshToken: string;
+        };
+      }>("/users/auth/refresh", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (
+        response.success &&
+        response.data?.accessToken &&
+        response.data?.refreshToken
+      ) {
+        this.updateTokens(
+          response.data.accessToken,
+          response.data.refreshToken
+        );
+        logger.info("Token refresh successful");
+        return true;
+      }
+
+      this.clearStorage();
+      return false;
+    } catch (error) {
+      logger.error("Token refresh failed", { error });
+      this.clearStorage();
+      return false;
+    }
+  }
+
+  // =============================================================================
+  // State Management
+  // =============================================================================
+
+  isAuthenticated(): boolean {
+    const token = this.getAccessToken();
+    const user = this.getCurrentUser();
+    return !!(token && user);
+  }
+
+  getCurrentUser(): User | null {
+    try {
+      const userStr = localStorage.getItem(this.USER_KEY);
+      if (!userStr) return null;
+
+      const user = JSON.parse(userStr);
+
+      if (!user || !user.id || !user.username) {
+        logger.warn("Invalid user data in storage");
+        this.clearStorage();
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      logger.error("Failed to parse stored user", { error });
+      this.clearStorage();
+      return null;
+    }
+  }
+
+  getAccessToken(): string | null {
+    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+  }
+
+  private getRefreshToken(): string | null {
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+  }
+
+  private storeAuthData(
+    accessToken: string,
+    refreshToken: string,
+    user: User
+  ): void {
+    try {
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+
+      logger.debug("Auth data stored successfully", {
+        username: user.username,
+      });
+    } catch (error) {
+      logger.error("Failed to store auth data", { error });
+      throw new Error("Failed to store authentication data");
+    }
+  }
+
+  private updateTokens(accessToken: string, refreshToken: string): void {
+    try {
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+
+      logger.debug("Tokens updated successfully");
+    } catch (error) {
+      logger.error("Failed to update tokens", { error });
+      throw new Error("Failed to update tokens");
+    }
+  }
+
+  private clearStorage(): void {
+    try {
+      localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+
+      logger.debug("Auth storage cleared");
+    } catch (error) {
+      logger.error("Failed to clear auth storage", { error });
+    }
+  }
+}
+
+export const authService = new AuthService();
+
+// Export types for use in other files
+/*export type {
+  User,
+  LoginCredentials,
+  RegisterData,
+  AuthResponse,
+} from "../types/index";
+
+/*import {
+  User,
+  LoginCredentials,
+  RegisterData,
+  AuthResponse,
+  GameRecord,
+  UserStats,
+  GameAlbum,
+} from "../types/auth";
+
 const getApiUrl = (): string => {
   if (
     typeof window !== "undefined" &&
@@ -10,66 +1499,6 @@ const getApiUrl = (): string => {
 };
 
 const API_URL = getApiUrl();
-
-export interface User {
-  id: string | number;
-  username: string;
-  email: string;
-  gitlab_id?: number;
-  created_at: string;
-}
-
-export interface LoginCredentials {
-  username: string;
-  password: string;
-}
-
-export interface RegisterData {
-  username: string;
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  success: boolean;
-  message?: string;
-  data?: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
-  };
-}
-
-export interface GameRecord {
-  gameId: string;
-  word: string;
-  guesses: string[];
-  won: boolean;
-  date: string;
-  attempts: number;
-}
-
-export interface UserStats {
-  totalGames: number;
-  wins: number;
-  winRate: number;
-  currentStreak: number;
-  maxStreak: number;
-  averageAttempts: number;
-  guessDistribution: { [attempts: string]: number };
-  lastPlayedAt: Date | null;
-}
-
-export interface GameAlbum {
-  id: string;
-  userId: string;
-  title: string;
-  description: string;
-  isPublic: boolean;
-  gameIds: string[];
-  createdAt: string;
-  updatedAt: string;
-}
 
 class AuthService {
   private readonly ACCESS_TOKEN_KEY = "wordle_access_token";
@@ -510,6 +1939,7 @@ class AuthService {
         ? games.map((game: any) => ({
             gameId: game.gameId || game.game_id || game.id,
             word: game.targetWord || game.target_word || game.word || "UNKNOWN",
+            targetWord: game.targetWord,
             guesses: game.guesses || [],
             won: game.won || false,
             attempts: game.attempts || 0,
@@ -568,9 +1998,6 @@ class AuthService {
           statsData.averageAttempts?.toString() || "0"
         ),
         guessDistribution,
-        lastPlayedAt: statsData.lastPlayedAt
-          ? new Date(statsData.lastPlayedAt)
-          : null,
       };
     } catch (error) {
       console.error("Failed to get user stats:", error);
@@ -582,7 +2009,6 @@ class AuthService {
         maxStreak: 0,
         averageAttempts: 0,
         guessDistribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0 },
-        lastPlayedAt: null,
       };
     }
   }
@@ -591,7 +2017,6 @@ class AuthService {
   async createAlbum(albumData: {
     title: string;
     description: string;
-    isPublic: boolean;
   }): Promise<GameAlbum> {
     if (!this.isAuthenticated()) {
       throw new Error("Authentication required");
@@ -834,7 +2259,7 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-/*// services/auth.ts - Fixed auth service with album update method
+// services/auth.ts - Fixed auth service with album update method
 const getApiUrl = (): string => {
   if (
     typeof window !== "undefined" &&

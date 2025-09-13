@@ -40,69 +40,21 @@
 .nav-buttons {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex: 1;
   justify-content: center;
 }
 
-.nav-btn {
-  background: none;
-  border: 2px solid #565758;
-  color: #d7dadc;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.2s ease;
+.nav-buttons .nav-button {
   min-width: 80px;
-}
-
-.nav-btn:hover:not(:disabled) {
-  background: #565758;
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.nav-btn:focus {
-  outline: 2px solid #538d4e;
-  outline-offset: 2px;
-}
-
-.nav-btn.active {
-  background: #538d4e;
-  border-color: #538d4e;
-  color: #ffffff;
-}
-
-.nav-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.logout-btn {
-  background: none;
-  border: 2px solid #b91c1c;
-  color: #ffffff;
+  font-size: 14px;
   padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+}
+
+.nav-buttons .logout-button {
   min-width: 80px;
-}
-
-.logout-btn:hover {
-  background: #b91c1c;
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.logout-btn:focus {
-  outline: 2px solid #b91c1c;
-  outline-offset: 2px;
+  font-size: 14px;
+  padding: 8px 16px;
 }
 
 .user-status {
@@ -147,10 +99,10 @@
     gap: 12px;
   }
 
-  .nav-btn,
-  .logout-btn {
-    padding: 6px 12px;
+  .nav-buttons .nav-button,
+  .nav-buttons .logout-button {
     font-size: 13px;
+    padding: 6px 12px;
     min-width: 70px;
   }
 
@@ -169,17 +121,21 @@
   }
 
   .wordle-title {
-    font-size: 20px;
+    font-size: 24px;
   }
 
   .nav-buttons {
     gap: 8px;
   }
 
-  .nav-btn,
-  .logout-btn {
-    padding: 4px 8px;
+  .nav-buttons .nav-button,
+  .nav-buttons .logout-button {
     font-size: 12px;
+    padding: 4px 8px;
     min-width: 60px;
+  }
+
+  .user-status {
+    font-size: 12px;
   }
 }

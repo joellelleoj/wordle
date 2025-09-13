@@ -1,61 +1,313 @@
-// pages/ProfilePage.tsx - Updated with navigation props
-import { useState, useEffect } from "react";
-import { User, authService } from "../services/auth";
-
-interface UserStats {
-  totalGames: number;
-  wins: number;
-  winRate: number;
-  currentStreak: number;
-  maxStreak: number;
-  averageAttempts: number;
-  guessDistribution: { [attempts: string]: number };
-  lastPlayedAt: Date | null;
-}
-
-interface GameRecord {
-  id?: string;
-  gameId: string;
-  targetWord?: string;
-  word?: string;
-  guesses: string[];
-  won: boolean;
-  attempts: number;
-  completedAt?: string;
-  date?: string;
-  createdAt?: string;
-}
-
-interface GameAlbum {
-  id: string;
-  userId: string;
-  title: string;
-  description: string;
-  isPublic: boolean;
-  gameIds: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface GameVisualization {
-  board: string[][];
-  colors: string[][];
-  metadata: {
-    word: string;
-    attempts: number;
-    won: boolean;
-    date: string;
-  };
-}
+// pages/ProfilePage.tsx - Clean implementation focused on rendering profile components
+import React, { useState, useEffect } from "react";
+import { User } from "../types";
+import { UserInfo } from "../components/profile/UserInfo";
+import { UserStats } from "../components/profile/UserStats";
+import { GameHistory } from "../components/profile/GameHistory";
+import { AlbumManager } from "../components/profile/AlbumManager";
+import { LoadingSpinner } from "../components/layout/LoadingSpinner";
+import { profileService } from "../services/profile";
+import { authService } from "../services/auth";
+import { logger } from "../utils/logger";
+import "./ProfilePage.css";
 
 interface ProfilePageProps {
   user: User | null;
   selectedAlbumId?: string;
-  onNavigate?: (
-    page: "game" | "login" | "register" | "profile",
-    options?: { albumId?: string }
-  ) => void;
+  onNavigate: (page: "game" | "login" | "register" | "profile") => void;
 }
+
+interface ProfileData {
+  stats: any;
+  gameHistory: any[];
+  albums: any[];
+}
+
+export const ProfilePage: React.FC<ProfilePageProps> = ({
+  user,
+  selectedAlbumId,
+  onNavigate,
+}) => {
+  // Simple state management
+  const [profileData, setProfileData] = useState<ProfileData>({
+    stats: null,
+    gameHistory: [],
+    albums: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "albums">(
+    "overview"
+  );
+
+  // Authentication check - redirect if not authenticated
+  useEffect(() => {
+    if (!user || !authService.isAuthenticated()) {
+      logger.warn(
+        "Profile access requires authentication - redirecting to login"
+      );
+      onNavigate("login");
+      return;
+    }
+  }, [user, onNavigate]);
+
+  // Load profile data
+  useEffect(() => {
+    if (!user || !authService.isAuthenticated()) {
+      return;
+    }
+
+    const loadProfileData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        logger.info("Loading profile data");
+
+        // Load all data in parallel
+        const [stats, gameHistory, albums] = await Promise.allSettled([
+          profileService.getUserStats(),
+          profileService.getGameHistory(50, 0),
+          profileService.getUserAlbums(),
+        ]);
+
+        // Extract results, using defaults for failures
+        const profileData: ProfileData = {
+          stats:
+            stats.status === "fulfilled"
+              ? stats.value
+              : {
+                  totalGames: 0,
+                  wins: 0,
+                  winRate: 0,
+                  currentStreak: 0,
+                  maxStreak: 0,
+                  averageAttempts: 0,
+                  guessDistribution: {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0,
+                    "4": 0,
+                    "5": 0,
+                    "6": 0,
+                  },
+                },
+          gameHistory:
+            gameHistory.status === "fulfilled" ? gameHistory.value : [],
+          albums: albums.status === "fulfilled" ? albums.value : [],
+        };
+
+        setProfileData(profileData);
+        logger.info("Profile data loaded successfully", {
+          hasStats: !!profileData.stats,
+          gameCount: profileData.gameHistory.length,
+          albumCount: profileData.albums.length,
+        });
+
+        // Handle any errors
+        const failures = [stats, gameHistory, albums].filter(
+          (result) => result.status === "rejected"
+        );
+        if (failures.length > 0) {
+          logger.warn("Some profile data failed to load", {
+            failureCount: failures.length,
+          });
+          setError(
+            `${failures.length} components failed to load. Some features may be limited.`
+          );
+        }
+      } catch (error) {
+        logger.error("Failed to load profile data", { error });
+        setError(
+          "Failed to load profile data. Please try refreshing the page."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [user]);
+
+  // Handle album operations
+  const handleCreateAlbum = async (data: any) => {
+    try {
+      const newAlbum = await profileService.createAlbum(data);
+      setProfileData((prev) => ({
+        ...prev,
+        albums: [newAlbum, ...prev.albums],
+      }));
+      logger.info("Album created successfully");
+    } catch (error) {
+      logger.error("Failed to create album", { error });
+      throw error;
+    }
+  };
+
+  const handleUpdateAlbum = async (id: string, data: any) => {
+    try {
+      const updatedAlbum = await profileService.updateAlbum(id, data);
+      setProfileData((prev) => ({
+        ...prev,
+        albums: prev.albums.map((album) =>
+          album.id === id ? updatedAlbum : album
+        ),
+      }));
+      logger.info("Album updated successfully");
+    } catch (error) {
+      logger.error("Failed to update album", { error });
+      throw error;
+    }
+  };
+
+  const handleDeleteAlbum = async (id: string) => {
+    try {
+      await profileService.deleteAlbum(id);
+      setProfileData((prev) => ({
+        ...prev,
+        albums: prev.albums.filter((album) => album.id !== id),
+      }));
+      logger.info("Album deleted successfully");
+    } catch (error) {
+      logger.error("Failed to delete album", { error });
+      throw error;
+    }
+  };
+
+  const handleGameSelect = (gameId: string) => {
+    logger.info("Game selected", { gameId });
+    // Could navigate to game details or show game visualization
+  };
+
+  // Authentication guard
+  if (!user) {
+    return (
+      <div className="profile-page">
+        <div className="profile-loading">
+          <div className="error-message">
+            <p>Please log in to access your profile</p>
+            <p>Redirecting to login...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="profile-page">
+        <div className="profile-header">
+          <UserInfo user={user} />
+        </div>
+        <div className="profile-loading">
+          <LoadingSpinner size="large" message="Loading profile..." />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-page">
+      {/* Profile Header */}
+      <div className="profile-header">
+        <UserInfo user={user} />
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button onClick={() => setError(null)}>×</button>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="profile-tabs">
+        <button
+          className={`tab-button ${activeTab === "overview" ? "active" : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          Overview
+        </button>
+        <button
+          className={`tab-button ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
+          Game History ({profileData.gameHistory.length})
+        </button>
+        <button
+          className={`tab-button ${activeTab === "albums" ? "active" : ""}`}
+          onClick={() => setActiveTab("albums")}
+        >
+          Albums ({profileData.albums.length})
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="profile-content">
+        {activeTab === "overview" && (
+          <div className="overview-tab">
+            <UserStats stats={profileData.stats} loading={false} size="full" />
+
+            <div className="recent-games">
+              <h3>Recent Games</h3>
+              <GameHistory
+                games={profileData.gameHistory.slice(0, 5)}
+                loading={false}
+                onGameSelect={handleGameSelect}
+                showPagination={false}
+              />
+              {profileData.gameHistory.length > 5 && (
+                <button
+                  className="view-all-button"
+                  onClick={() => setActiveTab("history")}
+                >
+                  View All Games
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div className="history-tab">
+            <GameHistory
+              games={profileData.gameHistory}
+              loading={false}
+              onGameSelect={handleGameSelect}
+            />
+          </div>
+        )}
+
+        {activeTab === "albums" && (
+          <div className="albums-tab">
+            <AlbumManager
+              albums={profileData.albums}
+              gameHistory={profileData.gameHistory}
+              loading={false}
+              onCreateAlbum={handleCreateAlbum}
+              onUpdateAlbum={handleUpdateAlbum}
+              onDeleteAlbum={handleDeleteAlbum}
+              selectedAlbum={null}
+              onSelectAlbum={() => {}}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+/*// pages/ProfilePage.tsx - Updated with navigation props
+import { useState, useEffect } from "react";
+import { authService } from "../services/auth";
+import {
+  UserStats,
+  GameRecord,
+  GameAlbum,
+  GameVisualization,
+  ProfilePageProps,
+} from "../types/auth";
 
 export function ProfilePage({
   user,
@@ -81,7 +333,6 @@ export function ProfilePage({
   const [albumForm, setAlbumForm] = useState({
     title: "",
     description: "",
-    isPublic: false,
     selectedGameIds: [] as string[],
   });
 
@@ -133,18 +384,6 @@ export function ProfilePage({
     fetchProfileData();
   }, [user, selectedAlbumId]);
 
-  // Helper functions
-  const getGameDate = (game: GameRecord): string => {
-    const dateStr = game.completedAt || game.date || game.createdAt;
-    if (!dateStr) return "Unknown date";
-    try {
-      const date = new Date(dateStr);
-      return isNaN(date.getTime()) ? "Invalid date" : date.toLocaleDateString();
-    } catch {
-      return "Invalid date";
-    }
-  };
-
   const getGameWord = (game: GameRecord): string => {
     return (game.targetWord || game.word || "UNKNOWN").toUpperCase();
   };
@@ -187,7 +426,6 @@ export function ProfilePage({
         word,
         attempts: game.attempts,
         won: game.won,
-        date: getGameDate(game),
       },
     };
   };
@@ -210,13 +448,11 @@ export function ProfilePage({
         console.log("Updating album:", editingAlbum.id, {
           title: albumForm.title,
           description: albumForm.description,
-          isPublic: albumForm.isPublic,
         });
 
         const updatedAlbum = await authService.updateAlbum(editingAlbum.id, {
           title: albumForm.title,
           description: albumForm.description,
-          isPublic: albumForm.isPublic,
         });
 
         console.log("Album updated successfully:", updatedAlbum.id);
@@ -266,14 +502,12 @@ export function ProfilePage({
         console.log("Creating new album:", {
           title: albumForm.title,
           description: albumForm.description,
-          isPublic: albumForm.isPublic,
           selectedGames: albumForm.selectedGameIds.length,
         });
 
         const newAlbum = await authService.createAlbum({
           title: albumForm.title,
           description: albumForm.description,
-          isPublic: albumForm.isPublic,
         });
 
         console.log("Album created successfully:", newAlbum.id);
@@ -284,7 +518,8 @@ export function ProfilePage({
           try {
             const gameRecord = gameHistory.find(
               (game) =>
-                getGameId(game) === selectedGameId || game.id === selectedGameId
+                getGameId(game) === selectedGameId ||
+                game.gameId === selectedGameId
             );
 
             if (!gameRecord) {
@@ -333,7 +568,6 @@ export function ProfilePage({
     setAlbumForm({
       title: "",
       description: "",
-      isPublic: false,
       selectedGameIds: [],
     });
   };
@@ -412,7 +646,6 @@ export function ProfilePage({
       <div className="profile-container">
         <h2>Your Wordle Profile</h2>
 
-        {/* Error display */}
         {error && (
           <div className="error-message">
             {error}
@@ -422,7 +655,6 @@ export function ProfilePage({
           </div>
         )}
 
-        {/* Tab Navigation */}
         <div className="tab-navigation">
           <button
             className={`tab-button ${activeTab === "stats" ? "active" : ""}`}
@@ -444,7 +676,6 @@ export function ProfilePage({
           </button>
         </div>
 
-        {/* Statistics Tab */}
         {activeTab === "stats" && (
           <div className="profile-info">
             <div className="info-section">
@@ -504,7 +735,6 @@ export function ProfilePage({
                 </div>
               </div>
 
-              {/* Guess Distribution Chart */}
               <div className="guess-distribution">
                 <h4>Guess Distribution</h4>
                 {distributionEntries.map(([attempts, count]) => {
@@ -539,7 +769,6 @@ export function ProfilePage({
           </div>
         )}
 
-        {/* Game History Tab */}
         {activeTab === "games" && (
           <div className="info-section">
             <div className="section-header">
@@ -575,7 +804,6 @@ export function ProfilePage({
                           {game.attempts}/6
                         </span>
                       </div>
-                      <div className="game-date">{getGameDate(game)}</div>
 
                       <div className="game-visualization">
                         <GameBoardVisualization visualization={visualization} />
@@ -588,7 +816,6 @@ export function ProfilePage({
           </div>
         )}
 
-        {/* Albums Tab */}
         {activeTab === "albums" && (
           <div className="info-section">
             <div className="section-header">
@@ -627,7 +854,6 @@ export function ProfilePage({
                             setAlbumForm({
                               title: album.title,
                               description: album.description,
-                              isPublic: album.isPublic,
                               selectedGameIds: album.gameIds || [],
                             });
                             setShowCreateAlbum(true);
@@ -654,13 +880,6 @@ export function ProfilePage({
                       <span className="game-count">
                         {album.gameIds?.length || 0} games
                       </span>
-                      <span
-                        className={`visibility-badge ${
-                          album.isPublic ? "public" : "private"
-                        }`}
-                      >
-                        {album.isPublic ? "Public" : "Private"}
-                      </span>
                     </div>
 
                     <div className="album-date">
@@ -673,7 +892,6 @@ export function ProfilePage({
           </div>
         )}
 
-        {/* Create/Edit Album Modal */}
         {showCreateAlbum && (
           <div className="modal-overlay">
             <div className="modal">
@@ -763,7 +981,7 @@ export function ProfilePage({
                             />
                             <span>
                               {getGameWord(game)} - {game.won ? "Won" : "Lost"}{" "}
-                              in {game.attempts} attempts ({getGameDate(game)})
+                              in {game.attempts} attempts
                             </span>
                           </div>
                         );
@@ -776,12 +994,10 @@ export function ProfilePage({
                   <label>
                     <input
                       type="checkbox"
-                      checked={albumForm.isPublic}
                       disabled={isCreatingAlbum}
                       onChange={(e) =>
                         setAlbumForm((prev) => ({
                           ...prev,
-                          isPublic: e.target.checked,
                         }))
                       }
                     />
@@ -821,7 +1037,6 @@ export function ProfilePage({
           </div>
         )}
 
-        {/* Album Detail Modal */}
         {selectedAlbum && (
           <AlbumViewerModal
             album={selectedAlbum}
@@ -958,7 +1173,7 @@ function AlbumViewerModal({
           <div className="album-thumbnails">
             {games.map((game, index) => (
               <div
-                key={game.id || game.gameId}
+                key={game.gameId || game.gameId}
                 className={`thumbnail ${
                   index === currentIndex ? "active" : ""
                 }`}
@@ -1011,12 +1226,11 @@ function generateGameVisualization(game: GameRecord): GameVisualization {
       word,
       attempts: game.attempts,
       won: game.won,
-      date: game.completedAt || game.date || "Unknown",
     },
   };
 }
 
-/*// pages/ProfilePage.tsx - Fixed album editing to update instead of create
+// pages/ProfilePage.tsx - Fixed album editing to update instead of create
 import { useState, useEffect } from "react";
 import { User, authService } from "../services/auth";
 

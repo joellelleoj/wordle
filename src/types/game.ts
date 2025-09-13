@@ -1,88 +1,95 @@
-export interface GameTile {
-  letter: string;
-  status: TileStatus;
-  animate?: boolean;
+export type TileState = "correct" | "present" | "absent" | null;
+export interface KeyboardProps {
+  onKeyPress: (key: string) => void;
+  usedLetters: Map<string, TileState>;
+  disabled?: boolean;
 }
 
-export enum TileStatus {
-  EMPTY = "empty",
-  FILLED = "filled",
-  CORRECT = "correct",
-  PRESENT = "present",
-  ABSENT = "absent",
+export interface GameResultProps {
+  gameOver: boolean;
+  won: boolean;
+  solution?: string;
+  onNewGame: () => void;
+  loading?: boolean;
 }
 
-export interface GuessFeedback {
-  position: number;
-  letter: string;
-  status: TileStatus;
-}
-
-export interface GuessResult {
-  word: string;
-  feedback: GuessFeedback[];
-  isCorrect: boolean;
-  isValidWord: boolean;
-  gameStatus: GameStatus;
-}
-
-export enum GameStatus {
-  PLAYING = "playing",
-  WON = "won",
-  LOST = "lost",
-  NOT_STARTED = "not_started",
-}
-
-export interface GameRow {
-  tiles: GameTile[];
-  submitted: boolean;
-  isCurrentRow?: boolean;
+export interface BoardProps {
+  board: string[][];
+  evaluations: TileState[][];
+  shakingRow: number | null;
+  poppingTile: { row: number; col: number } | null;
+  currentRow: number;
 }
 
 export interface GameState {
-  id?: string;
-  word: string;
-  rows: GameRow[];
+  gameId: string;
+  board: string[][];
+  evaluations: ("correct" | "present" | "absent" | null)[][];
   currentRow: number;
-  currentTile: number;
-  status: GameStatus;
-  startTime?: Date;
-  endTime?: Date;
-  attempts: number;
-  isSubmitting: boolean;
-  lastGuess?: string;
-  validationError?: string;
-}
-
-export interface GameResult {
-  id: string;
-  word: string;
-  attempts: number;
+  gameOver: boolean;
   won: boolean;
-  duration: number; // in seconds
+  attempts: number;
   guesses: string[];
-  guessFeedback: GuessFeedback[][];
-  createdAt: Date;
 }
 
-export interface GameStats {
-  totalGames: number;
-  totalWins: number;
-  winRate: number;
-  averageAttempts: number;
-  currentStreak: number;
-  maxStreak: number;
-  guessDistribution: { [key: number]: number };
+export interface GuessResponse {
+  valid: boolean;
+  result?: ("correct" | "present" | "absent")[];
+  gameOver?: boolean;
+  won?: boolean;
+  solution?: string;
+  gameState?: GameState;
+  error?: string;
 }
 
-export interface KeyboardKey {
-  key: string;
-  label: string;
-  status?: TileStatus;
-  isSpecial?: boolean;
-  width?: "narrow" | "wide" | "normal";
+export interface GameSessionData {
+  gameId: string;
+  gameState: Omit<GameState, "gameId">;
+  timestamp: string;
+  userId?: string | number;
+  sessionType?: "authenticated" | "anonymous" | "oauth";
 }
 
-export interface KeyboardState {
-  [letter: string]: TileStatus;
+export type Page = "game" | "login" | "register" | "profile";
+
+export interface RouteState {
+  page: Page;
+  gameId?: string;
+  albumId?: string;
+  isAuthenticated?: boolean;
 }
+
+/*
+
+export type TileState = "correct" | "present" | "absent" | null;
+export interface GameBoardProps {
+  board: string[][];
+  evaluations: TileState[][];
+  size?: "small" | "medium" | "large";
+  interactive?: boolean;
+  animationDelay?: number;
+  shakingRow?: number | null;
+  poppingTile?: { row: number; col: number } | null;
+  currentRow?: number;
+  showMetadata?: boolean;
+  gameMetadata?: {
+    word: string;
+    attempts: number;
+    won: boolean;
+    date?: string;
+  };
+}
+
+export interface KeyboardProps {
+  onKeyPress: (key: string) => void;
+  usedLetters: Map<string, TileState>;
+  disabled?: boolean;
+  size?: "small" | "medium" | "large";
+}
+
+export interface StorageItem<T> {
+  data: T;
+  timestamp: number;
+  expiresAt?: number;
+}
+*/

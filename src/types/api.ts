@@ -1,34 +1,48 @@
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
-  error?: string;
   message?: string;
-  statusCode: number;
-}
-
-export interface ApiError {
-  message: string;
-  statusCode: number;
-  details?: any;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
+  error?: string;
 }
 
 export interface ApiConfig {
-  baseUrl: string;
-  timeout?: number;
-  retries?: number;
+  baseURL: string;
+  timeout: number;
+  retries: number;
 }
 
-export interface PaginationInfo {
-  page: number;
+// ============ ERROR TYPES ============
+export interface AppError {
+  code: string;
+  message: string;
+  details?: any;
+  timestamp: number;
+}
+
+export type ErrorSeverity = "low" | "medium" | "high" | "critical";
+
+// ============ FORM TYPES ============
+export interface FormValidation {
+  isValid: boolean;
+  errors: Record<string, string>;
+}
+
+export interface AlbumFormData {
+  title: string;
+  description: string;
+  isPublic: boolean;
+  selectedGameIds: string[];
+}
+
+// ============ UTILITY TYPES ============
+export type LoadingState = "idle" | "loading" | "success" | "error";
+
+export interface PaginationParams {
   limit: number;
-  total: number;
-  hasMore: boolean;
+  offset: number;
+}
+
+export interface SortParams {
+  field: string;
+  direction: "asc" | "desc";
 }

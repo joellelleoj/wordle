@@ -1,76 +1,88 @@
-import React from "react";
-import { UserStats as UserStatsType } from "../../services/profile";
+import { memo } from "react";
+import { UserStatsProps } from "../../types/index";
+import { LoadingSpinner } from "../layout/LoadingSpinner";
+import "./UserStats.css";
 
-interface UserStatsProps {
-  stats: UserStatsType;
-}
-
-export const UserStats: React.FC<UserStatsProps> = ({ stats }) => {
-  // Fix: Ensure guessDistribution exists and get max safely
-  const guessDistribution = stats.guessDistribution || {
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-    6: 0,
-  };
-  const distributionValues = Object.values(guessDistribution);
-  const maxDistribution =
-    distributionValues.length > 0 ? Math.max(...distributionValues) : 1;
-
-  return (
-    <div className="user-stats">
-      <h3>Statistics</h3>
-
-      <div className="stats-grid">
-        <div className="stat-item">
-          <div className="stat-number">{stats.gamesPlayed}</div>
-          <div className="stat-label">Played</div>
+const UserStats = memo<UserStatsProps>(
+  ({ stats, loading = false, size = "full" }) => {
+    if (loading) {
+      return (
+        <div className={`userStats userStats--${size}`}>
+          <LoadingSpinner size="medium" />
         </div>
+      );
+    }
 
-        <div className="stat-item">
-          <div className="stat-number">{stats.winRate}%</div>
-          <div className="stat-label">Win %</div>
+    if (!stats) {
+      return (
+        <div className={`userStats userStats--${size}`}>
+          <p className="noStats">No statistics available</p>
         </div>
+      );
+    }
 
-        <div className="stat-item">
-          <div className="stat-number">{stats.currentStreak}</div>
-          <div className="stat-label">Current Streak</div>
-        </div>
+    const distributionEntries = Object.entries(stats.guessDistribution);
+    const maxDistribution = Math.max(
+      ...distributionEntries.map(([, count]) => count),
+      1
+    );
 
-        <div className="stat-item">
-          <div className="stat-number">{stats.maxStreak}</div>
-          <div className="stat-label">Max Streak</div>
-        </div>
-      </div>
+    return (
+      <div className={`userStats userStats--${size}`}>
+        <h3 className="title">Statistics</h3>
+        <div className="statsGrid">
+          <div className="statItem">
+            <span className="statValue">{stats.totalGames}</span>
+            <span className="statLabel">Played</span>
+          </div>
+          <div className="statItem">
+            <span className="statValue">{stats.wins}</span>
+            <span className="statLabel">Won</span>
+          </div>
 
-      <div className="guess-distribution">
-        <h4>Guess Distribution</h4>
-        {Object.entries(guessDistribution).map(([attempts, count]) => {
-          // Fix: Ensure count is a number and handle type properly
-          const numCount = typeof count === "number" ? count : 0;
-          const percentage =
-            maxDistribution > 0 ? (numCount / maxDistribution) * 100 : 0;
+          <div className="statItem">
+            <span className="statValue">{stats.winRate}%</span>
+            <span className="statLabel">Win Rate</span>
+          </div>
 
-          return (
-            <div key={attempts} className="distribution-row">
-              <div className="attempts-label">{attempts}</div>
-              <div className="distribution-bar">
-                <div
-                  className="bar-fill"
-                  style={{
-                    width: `${Math.max(percentage, 0)}%`,
-                    backgroundColor: numCount > 0 ? "#538d4e" : "#3a3a3c",
-                  }}
-                >
-                  <span className="count-label">{numCount}</span>
-                </div>
+          {size === "full" && (
+            <>
+              <div className="statItem">
+                <span className="statValue">
+                  {stats.averageAttempts.toFixed(1)}
+                </span>
+                <span className="statLabel">Avg Attempts</span>
               </div>
-            </div>
-          );
-        })}
+            </>
+          )}
+        </div>
+        {size === "full" && (
+          <div className="guessDistribution">
+            <h4 className="distributionTitle">Guess Distribution</h4>
+            {distributionEntries.map(([attempts, count]) => {
+              const percentage =
+                maxDistribution > 0 ? (count / maxDistribution) * 100 : 0;
+              return (
+                <div key={attempts} className="distributionRow">
+                  <div className="attemptsLabel">{attempts}</div>
+                  <div className="distributionBar">
+                    <div
+                      className="barFill"
+                      style={{
+                        width: `${Math.max(percentage, count > 0 ? 8 : 0)}%`,
+                      }}
+                    >
+                      <span className="countLabel">{count}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+export { UserStats };

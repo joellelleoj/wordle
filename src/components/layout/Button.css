@@ -92,3 +92,17 @@
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+@media (max-width: 768px) {
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
