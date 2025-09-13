@@ -25,7 +25,7 @@ echo -e "${YELLOW} Setting up local environment...${NC}"
 export NODE_ENV=development
 export PORT=3002
 export HOST=localhost
-export JWT_SECRET=local-dev-jwt-secret-change-in-production
+export JWT_SECRET=your-super-secret-jwt-key-for-development-only
 export CORS_ORIGIN=http://localhost:3000,http://localhost:5173,http://localhost:8080
 export WORD_CACHE_PATH=./cache
 export PROFILE_SERVICE_URL=http://localhost:3004

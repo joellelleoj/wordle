@@ -14,10 +14,7 @@ module.exports = {
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  // Fix memory leaks and open handles
   maxWorkers: 1,
-  // Prevent axios from making real HTTP calls
   setupFiles: ["<rootDir>/jest.setup.js"],
-  // Global teardown
   globalTeardown: "<rootDir>/jest.teardown.js",
 };

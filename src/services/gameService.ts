@@ -39,7 +39,8 @@ export class GameService {
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor() {
-    this.profileServiceUrl = process.env.PROFILE_SERVICE_URL;
+    this.profileServiceUrl =
+      process.env.PROFILE_SERVICE_URL || "http://localhost:3004";
 
     if (process.env.NODE_ENV !== "test") {
       this.cleanupInterval = setInterval(
