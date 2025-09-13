@@ -21,38 +21,19 @@ Contains game data and user statistics:
 * `album_games` - Many-to-many relationship between albums and games
 * `user_stats` - Aggregated user statistics
 
-== Docker
-
-[source,bash]
-----
-# Build the image
-docker build -t wordle-database-setup .
-
-# Run with environment variables
-docker run --rm \
-  -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
-  wordle-database-setup
-----
-
 == Building
 
 [source,bash]
 ----
-# Install dependencies
 npm install
-
-# Compile TypeScript
 npm run build
-
-# Verify build
-ls -la dist/
 ----
 
-=== Testing
+== Local Testing
 
 [source,bash]
 ----
-# Test with local PostgreSQL
+# Start test PostgreSQL container
 docker run -d \
   --name test-postgres \
   -e POSTGRES_USER=test_user \
@@ -61,7 +42,7 @@ docker run -d \
   -p 5432:5432 \
   postgres:15-alpine
 
-# Run setup
+# Run setup with test database
 DATABASE_URL="postgresql://test_user:test_pass@localhost:5432/test_db" npm start
 
 # Cleanup
