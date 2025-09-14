@@ -1,5 +1,10 @@
 import { GameService } from "../src/services/gameService";
 
+beforeAll(() => {
+  process.env.NODE_ENV = "test";
+  process.env.WORD_CACHE_PATH = "./test-cache";
+});
+
 describe("GameService - Core Game Logic", () => {
   let gameService: GameService;
 

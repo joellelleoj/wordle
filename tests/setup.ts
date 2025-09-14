@@ -1,8 +1,3 @@
-/**
- * Jest Test Setup
- * Configures test environment for Game Service
- */
-
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
 process.env.JWT_SECRET = "test-jwt-secret";

@@ -45,6 +45,7 @@ npm install
 npm dev
 
 # Run tests
+npm install --save-dev jest
 npm test
 npm run test:coverag
 

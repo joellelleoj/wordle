@@ -1,6 +1,11 @@
 import request from "supertest";
 import app from "../src/index";
 
+beforeAll(() => {
+  process.env.NODE_ENV = "test";
+  process.env.WORD_CACHE_PATH = "./test-cache";
+});
+
 describe("Game Service API", () => {
   describe("POST /game/new", () => {
     it("should create a new game", async () => {
