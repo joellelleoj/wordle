@@ -5,6 +5,7 @@ import { UserRoutes } from "./routes/userRoutes";
 import { GameRoutes } from "./routes/gameRoutes";
 import { ProfileRoutes } from "./routes/ProfileRoutes";
 import { authFilter } from "./middleware/authFilter";
+import { setupSwagger } from "./swagger";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ class ApiGateway {
     this.port = parseInt(process.env.PORT || "8002");
     this.initializeMiddlewares();
     this.initializeRoutes();
+    this.initializeSwagger();
     this.setupErrorHandling();
   }
 
@@ -62,6 +64,21 @@ class ApiGateway {
     });
   }
 
+  private initializeSwagger(): void {
+    // Setup Swagger documentation
+    setupSwagger(this.app);
+  }
+
+  /**
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Health check endpoint
+   *     tags: [System]
+   *     responses:
+   *       200:
+   *         description: Gateway is healthy
+   */
   private initializeRoutes(): void {
     // Health check
     this.app.get("/health", (req: Request, res: Response) => {
@@ -92,7 +109,17 @@ class ApiGateway {
     const profileRoutes = new ProfileRoutes();
     this.app.use("/api/profile", profileRoutes.getRouter());
 
-    // Root route with comprehensive service information
+    /**
+     * @swagger
+     * /:
+     *   get:
+     *     summary: Get API Gateway service information
+     *     tags: [Gateway Info]
+     *     responses:
+     *       200:
+     *         description: Service information
+     */
+    // Root route
     this.app.get("/", (req: Request, res: Response) => {
       res.json({
         service: "Wordle API Gateway",
@@ -109,40 +136,23 @@ class ApiGateway {
             : null,
           status: req.auth?.isAuthenticated ? "authenticated" : "anonymous",
         },
-        microservices: {
-          game_service: process.env.GAME_SERVICE_URL || "http://localhost:3002",
-          user_service: process.env.USER_SERVICE_URL || "http://localhost:3003",
-          profile_service:
-            process.env.PROFILE_SERVICE_URL || "http://localhost:3004",
-        },
         endpoints: {
           health: "/health",
-          authentication: "/api/users/*",
-          game: {
-            create: "POST /api/game/new",
-            guess: "POST /api/game/:gameId/guess",
-            state: "GET /api/game/:gameId",
-            stats: "GET /api/game/stats",
-          },
-          profile: {
-            games: "GET/POST /api/profile/games",
-            stats: "GET /api/profile/stats",
-            posts: "GET/POST /api/profile/posts",
-            albums: "GET/POST /api/profile/albums",
-            search: "GET /api/profile/search/*",
-            note: "All profile endpoints require authentication",
-          },
-        },
-        features: {
-          authentication: "JWT-based with mock tokens for development",
-          gameRecording: "Automatic game saving for authenticated users",
-          socialFeatures: "Posts and albums for sharing game achievements",
-          statistics: "Comprehensive game statistics and streaks",
-          wordValidation: "Dictionary-based word validation",
+          documentation: "GET /api-docs",
         },
       });
     });
 
+    /**
+     * @swagger
+     * /api/test/auth:
+     *   get:
+     *     summary: Test authentication status
+     *     tags: [Testing]
+     *     responses:
+     *       200:
+     *         description: Authentication status
+     */
     // Test authentication endpoint
     this.app.get("/api/test/auth", (req: Request, res: Response) => {
       res.json({
@@ -158,7 +168,16 @@ class ApiGateway {
       });
     });
 
-    // Test CORS endpoint
+    /**
+     * @swagger
+     * /api/test:
+     *   get:
+     *     summary: Test CORS functionality
+     *     tags: [Testing]
+     *     responses:
+     *       200:
+     *         description: CORS test successful
+     */
     this.app.get("/api/test", (req: Request, res: Response) => {
       res.json({
         message: "CORS is working!",
@@ -191,90 +210,29 @@ class ApiGateway {
         timestamp: new Date().toISOString(),
         availableRoutes: {
           health: "GET /health",
-          authentication: [
-            "POST /api/users/auth/register",
-            "POST /api/users/auth/login",
-            "GET /api/users/auth/gitlab/login",
-            "POST /api/users/auth/gitlab/callback",
-            "POST /api/users/auth/logout",
-            "POST /api/users/auth/refresh",
-            "GET /api/users/auth/me",
-          ],
-          game: [
-            "POST /api/game/new",
-            "POST /api/game/:gameId/guess",
-            "GET /api/game/:gameId",
-            "GET /api/game/health",
-          ],
-          profile: [
-            "POST /api/profile/games (auth required)",
-            "GET /api/profile/games (auth required)",
-            "GET /api/profile/stats (auth required)",
-            "POST /api/profile/posts (auth required)",
-            "GET /api/profile/posts (auth required)",
-            "POST /api/profile/albums (auth required)",
-          ],
-          testing: [
-            "GET /api/test - CORS test",
-            "GET /api/test/auth - Authentication test",
-          ],
         },
-        tip: "Authentication is required for profile features. Use /api/users/auth/login to authenticate.",
       });
     });
   }
 
   public start(): void {
     this.app.listen(this.port, "0.0.0.0", () => {
-      console.log(`🚀 Wordle API Gateway started successfully!`);
-      console.log(`📍 Port: ${this.port}`);
-      console.log(`🌐 Local: http://localhost:${this.port}`);
-      console.log(`🧪 Test CORS: http://localhost:${this.port}/api/test`);
-      console.log(`🔐 Test Auth: http://localhost:${this.port}/api/test/auth`);
-      console.log(`❤️  Health: http://localhost:${this.port}/health`);
+      console.log(`Wordle API Gateway started successfully!`);
+      console.log(`Local: http://localhost:${this.port}`);
+      console.log(`Health: http://localhost:${this.port}/health`);
+      console.log(`Documentation: http://127.0.10.11:${this.port}/api-docs`);
       console.log(``);
-      console.log(`📋 Microservices Architecture:`);
-      console.log(
-        `   ├── Game Service: ${
-          process.env.GAME_SERVICE_URL || "http://localhost:3002"
-        }`
-      );
-      console.log(
-        `   ├── User Service: ${
-          process.env.USER_SERVICE_URL || "http://localhost:3003"
-        }`
-      );
-      console.log(
-        `   └── Profile Service: ${
-          process.env.PROFILE_SERVICE_URL || "http://localhost:3004"
-        }`
-      );
-      console.log(``);
-      console.log(`🔧 Features Enabled:`);
-      console.log(`   ✅ Authentication Filter (JWT + Mock tokens)`);
-      console.log(`   ✅ Automatic Game Recording (authenticated users)`);
-      console.log(`   ✅ Profile Management (games, stats, posts, albums)`);
-      console.log(`   ✅ Cross-service Communication`);
-      console.log(`   ✅ CORS Configuration`);
-      console.log(``);
-      console.log(`🎮 Game Flow:`);
-      console.log(`   1. User plays game via /api/game/* endpoints`);
-      console.log(
-        `   2. If authenticated, completed games auto-save to profile`
-      );
-      console.log(`   3. Users can create posts/albums from saved games`);
-      console.log(`   4. Statistics and streaks calculated automatically`);
-      console.log(``);
-      console.log(`🚦 Test Endpoints:`);
-      console.log(`   📊 Health: GET /health`);
-      console.log(`   🔐 Auth: GET /api/test/auth`);
-      console.log(`   🌐 CORS: GET /api/test`);
-      console.log(`   📖 Docs: GET / (service documentation)`);
     });
+  }
+
+  public getApp(): Application {
+    return this.app;
   }
 }
 
 const gateway = new ApiGateway();
-gateway.start();
+if (process.env.NODE_ENV !== "test") {
+  gateway.start();
+}
 
 export default gateway;

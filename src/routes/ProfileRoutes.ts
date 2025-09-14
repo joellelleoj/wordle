@@ -13,18 +13,68 @@ export class ProfileRoutes {
   }
 
   private initializeRoutes(): void {
-    // All profile routes require authentication
     this.router.use(this.requireAuth);
 
-    // Game recording
+    /**
+     * @swagger
+     * /api/profile/games:
+     *   get:
+     *     summary: Get user's saved games
+     *     tags: [Profile]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Games retrieved successfully
+     *       401:
+     *         description: Authentication required
+     *   post:
+     *     summary: Save a completed game
+     *     tags: [Profile]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Game saved successfully
+     *       401:
+     *         description: Authentication required
+     */
+
     this.router.post("/games", this.forwardRequest.bind(this));
     this.router.get("/games", this.forwardRequest.bind(this));
     this.router.get("/games/:gameId", this.forwardRequest.bind(this));
 
-    // Statistics
+    /**
+     * @swagger
+     * /api/profile/stats:
+     *   get:
+     *     summary: Get user game statistics
+     *     description: Returns comprehensive game statistics for the authenticated user
+     *     tags: [Profile]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: User statistics
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 stats:
+     *                   $ref: '#/components/schemas/GameStats'
+     *       401:
+     *         description: Authentication required
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     */
     this.router.get("/stats", this.forwardRequest.bind(this));
 
-    // Albums management - IMPORTANT: Order matters! More specific routes first
     // Album-Game relationship routes (MUST come before generic album routes)
     this.router.post(
       "/albums/:albumId/games/:gameId",
@@ -35,29 +85,40 @@ export class ProfileRoutes {
       this.forwardRequest.bind(this)
     );
 
-    // Game visualization
     this.router.get(
       "/games/:gameId/visualization",
       this.forwardRequest.bind(this)
     );
 
-    // Generic album routes (after specific album-game routes)
+    /**
+     * @swagger
+     * /api/profile/albums:
+     *   get:
+     *     summary: Get user's game albums
+     *     tags: [Profile]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Albums retrieved successfully
+     *       401:
+     *         description: Authentication required
+     *   post:
+     *     summary: Create a new album
+     *     tags: [Profile]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Album created successfully
+     *       401:
+     *         description: Authentication required
+     */
     this.router.post("/albums", this.forwardRequest.bind(this));
     this.router.get("/albums", this.forwardRequest.bind(this));
     this.router.get("/albums/:albumId", this.forwardRequest.bind(this));
     this.router.put("/albums/:albumId", this.forwardRequest.bind(this));
     this.router.delete("/albums/:albumId", this.forwardRequest.bind(this));
-
-    // Posts management (if you need them later)
-    this.router.post("/posts", this.forwardRequest.bind(this));
-    this.router.get("/posts", this.forwardRequest.bind(this));
-    this.router.get("/posts/public", this.forwardRequest.bind(this));
-    this.router.put("/posts/:postId", this.forwardRequest.bind(this));
-    this.router.delete("/posts/:postId", this.forwardRequest.bind(this));
-
-    // Search endpoints
-    this.router.get("/search/posts", this.forwardRequest.bind(this));
-    this.router.get("/search/users", this.forwardRequest.bind(this));
   }
 
   private requireAuth = (
@@ -84,12 +145,9 @@ export class ProfileRoutes {
       const targetUrl = `${this.profileServiceUrl}/api${req.path}`;
 
       console.log(
-        `🔄 Forwarding ${req.method} ${req.originalUrl} to ${targetUrl}`
+        `Forwarding ${req.method} ${req.originalUrl} to ${targetUrl}`
       );
-      console.log(
-        `📋 Auth context: ${req.auth?.user?.username || "anonymous"}`
-      );
-
+      console.log(`Auth context: ${req.auth?.user?.username || "anonymous"}`);
       const response = await axios({
         method: req.method as any,
         url: targetUrl,
@@ -104,14 +162,13 @@ export class ProfileRoutes {
         },
         timeout: 10000,
       });
-
-      console.log(`✅ Profile service responded: ${response.status}`);
+      console.log(`Profile service responded: ${response.status}`);
       res.status(response.status).json(response.data);
     } catch (error: any) {
-      console.error("❌ Profile service forwarding error:", error.message);
+      console.error("Profile service forwarding error:", error.message);
 
       if (error.response) {
-        console.error("📄 Error response data:", error.response.data);
+        console.error("Error response data:", error.response.data);
         res.status(error.response.status).json(error.response.data);
       } else if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
         res.status(503).json({

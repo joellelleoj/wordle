@@ -1,4 +1,3 @@
-// api-gateway/src/routes/GameRoutes.ts - Forwards to Game Service
 import { Router, Request, Response } from "express";
 import axios from "axios";
 
@@ -14,29 +13,31 @@ export class GameRoutes {
   }
 
   private initializeRoutes(): void {
-    // Create new game - Forward to Game Service
     this.router.post("/new", this.createGame.bind(this));
-
-    // Submit guess - Forward to Game Service
     this.router.post("/:gameId/guess", this.submitGuess.bind(this));
-
-    // Get game state - Forward to Game Service
     this.router.get("/:gameId", this.getGameState.bind(this));
-
-    // Health check that includes game service
     this.router.get("/health", this.healthCheck.bind(this));
-
-    // Admin endpoints
     this.router.post("/admin/refresh-words", this.refreshWords.bind(this));
     this.router.get("/admin/stats", this.getStats.bind(this));
   }
 
+  /**
+   * @swagger
+   * /api/game/new:
+   *   post:
+   *     summary: Create a new Wordle game
+   *     tags: [Game]
+   *     responses:
+   *       200:
+   *         description: Game created successfully
+   *       503:
+   *         description: Game service unavailable
+   */
   private async createGame(req: Request, res: Response): Promise<void> {
     try {
       console.log(
         `Forwarding create game request to: ${this.gameServiceUrl}/game/new`
       );
-
       const response = await axios.post(
         `${this.gameServiceUrl}/game/new`,
         {},
@@ -61,11 +62,38 @@ export class GameRoutes {
     }
   }
 
+  /**
+   * @swagger
+   * /api/game/{gameId}/guess:
+   *   post:
+   *     summary: Submit a guess for a game
+   *     tags: [Game]
+   *     parameters:
+   *       - in: path
+   *         name: gameId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               guess:
+   *                 type: string
+   *                 example: "HELLO"
+   *     responses:
+   *       200:
+   *         description: Guess processed successfully
+   *       400:
+   *         description: Invalid guess
+   */
   private async submitGuess(req: Request, res: Response): Promise<void> {
     try {
       const { gameId } = req.params;
       const { guess } = req.body;
-
       if (!gameId) {
         res.status(400).json({
           success: false,
@@ -73,7 +101,6 @@ export class GameRoutes {
         });
         return;
       }
-
       if (!guess || typeof guess !== "string") {
         res.status(400).json({
           success: false,
@@ -81,9 +108,7 @@ export class GameRoutes {
         });
         return;
       }
-
       console.log(`Forwarding guess submission for game ${gameId}: ${guess}`);
-
       const response = await axios.post(
         `${this.gameServiceUrl}/game/${gameId}/guess`,
         { guess: guess.toUpperCase() },
@@ -95,7 +120,6 @@ export class GameRoutes {
           },
         }
       );
-
       console.log("Game Service Guess Response:", response.status);
       res.status(response.status).json(response.data);
     } catch (error: any) {
@@ -104,10 +128,29 @@ export class GameRoutes {
     }
   }
 
+  /**
+   * @swagger
+   * /api/game/{gameId}:
+   *   get:
+   *     summary: Get game state
+   *     tags: [Game]
+   *     parameters:
+   *       - in: path
+   *         name: gameId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Game state retrieved successfully
+   *       400:
+   *         description: Invalid game ID
+   *       404:
+   *         description: Game not found
+   */
   private async getGameState(req: Request, res: Response): Promise<void> {
     try {
       const { gameId } = req.params;
-
       if (!gameId) {
         res.status(400).json({
           success: false,
@@ -115,9 +158,7 @@ export class GameRoutes {
         });
         return;
       }
-
       console.log(`Forwarding game state request for game ${gameId}`);
-
       const response = await axios.get(
         `${this.gameServiceUrl}/game/${gameId}`,
         {
@@ -127,7 +168,6 @@ export class GameRoutes {
           },
         }
       );
-
       res.status(response.status).json(response.data);
     } catch (error: any) {
       console.error("Error forwarding game state request:", error.message);
@@ -135,13 +175,24 @@ export class GameRoutes {
     }
   }
 
+  /**
+   * @swagger
+   * /api/game/health:
+   *   get:
+   *     summary: Game service health check
+   *     tags: [Game]
+   *     responses:
+   *       200:
+   *         description: Game service is healthy
+   *       503:
+   *         description: Game service is unhealthy
+   */
   private async healthCheck(req: Request, res: Response): Promise<void> {
     try {
       const gameHealthResponse = await axios.get(
         `${this.gameServiceUrl}/health`,
         { timeout: 5000 }
       );
-
       res.json({
         service: "api-gateway-game-routes",
         status: "healthy",
@@ -177,19 +228,17 @@ export class GameRoutes {
   private async refreshWords(req: Request, res: Response): Promise<void> {
     try {
       console.log("Forwarding word refresh request to game service");
-
       const response = await axios.post(
         `${this.gameServiceUrl}/admin/refresh-words`,
         {},
         {
-          timeout: 30000, // Word refresh might take longer
+          timeout: 30000,
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
         }
       );
-
       res.status(response.status).json(response.data);
     } catch (error: any) {
       console.error("Error forwarding word refresh request:", error.message);
@@ -202,7 +251,6 @@ export class GameRoutes {
       const response = await axios.get(`${this.gameServiceUrl}/stats`, {
         timeout: 5000,
       });
-
       res.status(response.status).json(response.data);
     } catch (error: any) {
       console.error("Error forwarding stats request:", error.message);
@@ -216,7 +264,6 @@ export class GameRoutes {
     operation: string
   ): void {
     if (error.response) {
-      // Game service responded with an error
       console.log(
         `Game service error for ${operation}:`,
         error.response.status,
@@ -258,188 +305,3 @@ export class GameRoutes {
     return this.router;
   }
 }
-
-/*import { Router } from "express";
-import axios from "axios";
-
-const router = Router();
-
-// Use environment variables for service discovery
-const GAME_SERVICE_URL =
-  process.env.GAME_SERVICE_URL || "http://game-service:3001";
-const DATA_ACCESS_SERVICE_URL =
-  process.env.DATA_ACCESS_SERVICE_URL || "http://data-access-service:3002";
-
-// Create new game
-router.post("/new", async (req, res) => {
-  try {
-    console.log("Creating game via API Gateway");
-    const response = await axios.post(`${GAME_SERVICE_URL}/game`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error creating game:", error.message);
-    res.status(500).json({ error: "Failed to create game" });
-  }
-});
-
-// Submit guess
-router.post("/:gameId/guess", async (req, res) => {
-  try {
-    const { gameId } = req.params;
-    const { guess } = req.body;
-
-    if (!gameId) {
-      return res.status(400).json({ error: "Game ID required" });
-    }
-
-    if (!guess || typeof guess !== "string") {
-      return res.status(400).json({ error: "Valid guess required" });
-    }
-
-    const response = await axios.post(
-      `${GAME_SERVICE_URL}/game/${gameId}/guess`,
-      { guess: guess.toUpperCase() }
-    );
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error submitting guess:", error.message);
-    if (error.response?.status === 404) {
-      res.status(404).json({ error: "Game not found" });
-    } else {
-      res.status(500).json({ error: "Failed to submit guess" });
-    }
-  }
-});
-
-// Get game state
-router.get("/:gameId", async (req, res) => {
-  try {
-    const { gameId } = req.params;
-
-    if (!gameId) {
-      return res.status(400).json({ error: "Game ID required" });
-    }
-
-    const response = await axios.get(`${GAME_SERVICE_URL}/game/${gameId}`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error getting game:", error.message);
-    if (error.response?.status === 404) {
-      res.status(404).json({ error: "Game not found" });
-    } else {
-      res.status(500).json({ error: "Failed to get game state" });
-    }
-  }
-});
-
-// Word validation endpoint - proxies to data access service
-router.post("/validate", async (req, res) => {
-  try {
-    const { word } = req.body;
-
-    if (!word || typeof word !== "string") {
-      return res.status(400).json({ error: "Word required" });
-    }
-
-    const response = await axios.post(
-      `${DATA_ACCESS_SERVICE_URL}/words/validate`,
-      {
-        word: word.toUpperCase(),
-      }
-    );
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error validating word:", error.message);
-    res.status(500).json({ error: "Failed to validate word" });
-  }
-});
-
-// Get random word endpoint - proxies to data access service
-router.get("/word/random", async (req, res) => {
-  try {
-    const response = await axios.get(`${DATA_ACCESS_SERVICE_URL}/words/random`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error getting random word:", error.message);
-    res.status(500).json({ error: "Failed to get random word" });
-  }
-});
-
-// Health check that verifies all downstream services
-router.get("/health", async (req, res) => {
-  try {
-    const gameHealthPromise = axios.get(`${GAME_SERVICE_URL}/health`);
-    const dataHealthPromise = axios.get(`${DATA_ACCESS_SERVICE_URL}/health`);
-
-    const [gameHealth, dataHealth] = await Promise.all([
-      gameHealthPromise,
-      dataHealthPromise,
-    ]);
-
-    res.json({
-      status: "ok",
-      services: {
-        gameService: gameHealth.data,
-        dataAccessService: dataHealth.data,
-      },
-    });
-  } catch (error: any) {
-    console.error("Health check failed:", error.message);
-    res.status(503).json({
-      status: "degraded",
-      error: error.message,
-    });
-  }
-});
-
-export default router; /*import { Router } from "express";
-import axios from "axios";
-
-const router = Router();
-// Change this to localhost for local testing
-const GAME_SERVICE_URL =
-  process.env.GAME_SERVICE_URL || "http://localhost:3001";
-
-// Create new game
-router.post("/new", async (req, res) => {
-  try {
-    console.log("Creating game at:", `${GAME_SERVICE_URL}/game`);
-    const response = await axios.post(`${GAME_SERVICE_URL}/game`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error creating game:", error.message);
-    res.status(500).json({ error: "Failed to create game" });
-  }
-});
-
-// Submit guess
-router.post("/:gameId/guess", async (req, res) => {
-  try {
-    const { gameId } = req.params;
-    const { guess } = req.body;
-
-    const response = await axios.post(
-      `${GAME_SERVICE_URL}/game/${gameId}/guess`,
-      { guess }
-    );
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error submitting guess:", error.message);
-    res.status(500).json({ error: "Failed to submit guess" });
-  }
-});
-
-// Get game state
-router.get("/:gameId", async (req, res) => {
-  try {
-    const { gameId } = req.params;
-    const response = await axios.get(`${GAME_SERVICE_URL}/game/${gameId}`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error("Error getting game:", error.message);
-    res.status(500).json({ error: "Failed to get game state" });
-  }
-});
-
-export default router;
-*/

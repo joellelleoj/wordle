@@ -6,9 +6,9 @@ pnpm-lock.yaml
 dist/
 build/
 coverage/
+.env
 
 # Env / local
-.env
 .env.*
 .DS_Store
 .idea/
