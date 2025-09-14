@@ -32,7 +32,7 @@ echo -e "${BLUE} Node.js version: $(node --version)${NC}"
 echo -e "${BLUE} npm version: $(npm --version)${NC}"
 
 # Create local environment variables (override production settings)
-echo -e "${YELLOW}🔧 Setting up local environment...${NC}"
+echo -e "${YELLOW}Setting up local environment...${NC}"
 export NODE_ENV=development
 export PORT=3003
 export HOST=localhost
@@ -65,7 +65,7 @@ fi
 
 # Install dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
-    echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+    echo -e "${YELLOW}Installing dependencies...${NC}"
     npm install
     echo -e "${GREEN}Dependencies installed${NC}"
 else

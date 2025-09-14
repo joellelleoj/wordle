@@ -49,7 +49,7 @@ module.exports = {
   forceExit: true,
   detectOpenHandles: true,
   silent: false,
-  moduleNameMapping: {
+  moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   // Global mocks

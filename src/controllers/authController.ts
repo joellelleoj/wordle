@@ -246,12 +246,14 @@ export class AuthController {
    */
   gitlabLogin = async (req: Request, res: Response): Promise<void> => {
     try {
+      // FIXED: Use consistent redirect URI from environment
       const authUrl = this.authService.generateOAuthUrl();
 
       res.status(200).json({
         success: true,
         authUrl: authUrl,
         message: "Redirect to this URL to authenticate with GitLab",
+        redirectUri: this.getGitLabRedirectUri(), // For debugging
       });
     } catch (error) {
       const errorMessage =

@@ -8,85 +8,6 @@ import { swaggerSetup } from "./swagger/swagger";
 
 dotenv.config();
 
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Service root endpoint
- *     tags: [Service Info]
- *     description: Returns basic information about the User Service
- *     responses:
- *       200:
- *         description: Service information
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 service:
- *                   type: string
- *                   example: "Wordle User Service"
- *                 version:
- *                   type: string
- *                   example: "1.0.0"
- *                 status:
- *                   type: string
- *                   example: "running"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                 endpoints:
- *                   type: object
- *                   properties:
- *                     auth:
- *                       type: string
- *                       example: "/api/v1/auth"
- *                     health:
- *                       type: string
- *                       example: "/health"
- */
-
-/**
- * @swagger
- * /health:
- *   get:
- *     summary: Service health check
- *     tags: [Health]
- *     description: Returns the health status of the User Service and database connection
- *     responses:
- *       200:
- *         description: Service is healthy
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/HealthResponse'
- *       503:
- *         description: Service is unhealthy
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 service:
- *                   type: string
- *                   example: "User Service"
- *                 version:
- *                   type: string
- *                   example: "1.0.0"
- *                 status:
- *                   type: string
- *                   example: "unhealthy"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                 database:
- *                   type: string
- *                   example: "disconnected"
- *                 error:
- *                   type: string
- *                   example: "Database connection failed"
- */
-
 class UserService {
   private app: Application;
   private port: number;
@@ -131,6 +52,47 @@ class UserService {
     swaggerSetup.setupSwagger(this.app);
   }
 
+  /**
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Service health check
+   *     tags: [Health]
+   *     description: Returns the health status of the User Service and database connection
+   *     responses:
+   *       200:
+   *         description: Service is healthy
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/HealthResponse'
+   *       503:
+   *         description: Service is unhealthy
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 service:
+   *                   type: string
+   *                   example: "User Service"
+   *                 version:
+   *                   type: string
+   *                   example: "1.0.0"
+   *                 status:
+   *                   type: string
+   *                   example: "unhealthy"
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                 database:
+   *                   type: string
+   *                   example: "disconnected"
+   *                 error:
+   *                   type: string
+   *                   example: "Database connection failed"
+   */
+
   private initializeRoutes(): void {
     // Health check at root level
     this.app.get("/health", async (req: Request, res: Response) => {
@@ -155,7 +117,43 @@ class UserService {
       }
     });
 
-    // Root route
+    /**
+     * @swagger
+     * /:
+     *   get:
+     *     summary: Service root endpoint
+     *     tags: [Service Info]
+     *     description: Returns basic information about the User Service
+     *     responses:
+     *       200:
+     *         description: Service information
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 service:
+     *                   type: string
+     *                   example: "Wordle User Service"
+     *                 version:
+     *                   type: string
+     *                   example: "1.0.0"
+     *                 status:
+     *                   type: string
+     *                   example: "running"
+     *                 timestamp:
+     *                   type: string
+     *                   format: date-time
+     *                 endpoints:
+     *                   type: object
+     *                   properties:
+     *                     auth:
+     *                       type: string
+     *                       example: "/api/v1/auth"
+     *                     health:
+     *                       type: string
+     *                       example: "/health"
+     */
     this.app.get("/", (req: Request, res: Response) => {
       res.status(200).json({
         service: "Wordle User Service",
@@ -193,18 +191,6 @@ class UserService {
       res.status(404).json({
         success: false,
         message: `Route ${req.originalUrl} not found`,
-        availableRoutes: [
-          "GET /health",
-          "GET /api-docs (Swagger UI)",
-          "GET /api-docs.json (OpenAPI spec)",
-          "GET /api/v1/auth/gitlab/login",
-          "ALL /api/v1/auth/callback",
-          "POST /api/v1/auth/login",
-          "POST /api/v1/auth/register",
-          "POST /api/v1/auth/refresh",
-          "POST /api/v1/auth/logout",
-          "GET /api/v1/auth/me",
-        ],
       });
     });
   }
@@ -226,7 +212,6 @@ class UserService {
 
       this.app.listen(this.port, "0.0.0.0", () => {
         console.log(` User Service running on port ${this.port}`);
-        console.log(` Environment: ${process.env.NODE_ENV || "development"}`);
         console.log(` Health check: http://localhost:${this.port}/health`);
         console.log(
           ` API Documentation: http://localhost:${this.port}/api-docs`
@@ -234,18 +219,6 @@ class UserService {
         console.log(
           ` OpenAPI Spec: http://localhost:${this.port}/api-docs.json`
         );
-        console.log(` Auth endpoints:`);
-        console.log(
-          `   GET http://localhost:${this.port}/api/v1/auth/gitlab/login`
-        );
-        console.log(
-          `   ALL http://localhost:${this.port}/api/v1/auth/callback`
-        );
-        console.log(`   POST http://localhost:${this.port}/api/v1/auth/login`);
-        console.log(
-          `   POST http://localhost:${this.port}/api/v1/auth/register`
-        );
-        console.log(`   GET http://localhost:${this.port}/api/v1/auth/me`);
         console.log(`\n User Service started successfully!`);
       });
     } catch (error) {

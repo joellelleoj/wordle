@@ -14,25 +14,7 @@ export class SwaggerSetup {
           version: "1.0.0",
           description:
             "Authentication and user management service for the Wordle application",
-          contact: {
-            name: "Wordle Team",
-            email: "support@wordle.example.com",
-          },
-          license: {
-            name: "MIT",
-            url: "https://opensource.org/licenses/MIT",
-          },
         },
-        servers: [
-          {
-            url: "http://localhost:3003",
-            description: "Development server (local)",
-          },
-          {
-            url: "http://127.0.10.11:8081",
-            description: "Production server (devstud)",
-          },
-        ],
         components: {
           securitySchemes: {
             bearerAuth: {
@@ -183,11 +165,6 @@ export class SwaggerSetup {
       res.setHeader("Content-Type", "application/json");
       res.send(specs);
     });
-
-    console.log("📚 Swagger UI available at: http://localhost:3003/api-docs");
-    console.log(
-      "📄 OpenAPI spec available at: http://localhost:3003/api-docs.json"
-    );
   }
 }
 
