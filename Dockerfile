@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apk update && apk add --no-cache postgresql-client
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY . .
 RUN npm run build
