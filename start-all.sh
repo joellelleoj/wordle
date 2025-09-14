@@ -274,7 +274,7 @@ echo -e "${GREEN} Wordle Application Stack Started!${NC}"
 echo "=============================================="
 
 echo ""
-echo -e "${BLUE}📊 Service Status:${NC}"
+echo -e "${BLUE}Service Status:${NC}"
 $COMPOSE_CMD -f $COMPOSE_FILE ps
 
 echo ""
@@ -285,16 +285,10 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}🧪 Quick Tests:${NC}"
-if [ "$ENVIRONMENT" = "production" ]; then
-    echo "curl http://127.0.10.11:8080         # Frontend"
-    echo "curl http://127.0.10.11:8082/health  # API Gateway health"
-    echo "curl http://127.0.10.11:8081/health  # User Service health"
-else
-    echo "curl http://localhost:${FRONTEND_PORT}             # Frontend"
-    echo "curl http://localhost:${API_GATEWAY_PORT}/health  # API Gateway health"
-    echo "curl http://localhost:${USER_SERVICE_PORT}/health  # User Service health"
-fi
-
-echo ""
-echo -e "${BLUE}http://localhost:${FRONTEND_PORT} :${NC}"
+echo "=============================================="
+echo "Open: http://localhost:${FRONTEND_PORT}"
+echo "API: http://localhost:${API_GATEWAY_PORT}/health"
+echo "User Service: http://localhost:${USER_SERVICE_PORT}/health"
+echo "Documentation: http://localhost:${API_GATEWAY_PORT}/api-docs"
+echo "Documentation: http://localhost:${GAME_SERVICE_PORT}/api-docs"
+echo "Documentation: http://localhost:${USER_SERVICE_PORT}/api-docs"

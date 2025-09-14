@@ -30,7 +30,7 @@ services:
   # Database Setup Service (Internal only)
   database-setup:
     build:
-      context: ./database
+      context: ../database
       dockerfile: Dockerfile
     container_name: wordle-database-setup-prod
     environment:
@@ -51,7 +51,7 @@ services:
   # Game Service (Internal only)
   game-service:
     build:
-      context: ./wordle-game-service
+      context: ../wordle-game-service
       dockerfile: Dockerfile
     container_name: wordle-game-service-prod
     environment:
@@ -71,7 +71,7 @@ services:
   # User Service (Internal only - NO EXTERNAL PORT)
   user-service:
     build:
-      context: ./wordle-user-service
+      context: ../wordle-user-service
       dockerfile: Dockerfile
     container_name: wordle-user-service-prod
     environment:
@@ -99,7 +99,7 @@ services:
   # Profile Service (Internal only)
   profile-service:
     build:
-      context: ./wordle-profile-service
+      context: ../wordle-profile-service
       dockerfile: Dockerfile
     container_name: wordle-profile-service-prod
     environment:
@@ -121,7 +121,7 @@ services:
   # API Gateway - Exposed on port 8081 for /dev11/api2 (handles both /api and user auth endpoints)
   api-gateway:
     build:
-      context: ./wordle-api-gateway
+      context: ../wordle-api-gateway
       dockerfile: Dockerfile
     container_name: wordle-api-gateway-prod
     environment:
@@ -147,7 +147,7 @@ services:
   # Frontend - Exposed on port 8080 for /dev11
   frontend:
     build:
-      context: ./wordle-frontend
+      context: ../wordle-frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}

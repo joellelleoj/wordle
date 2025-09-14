@@ -82,32 +82,37 @@ profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSER
 |link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-deployment[Main Repository]
 |Project orchestration and documentation
 |N/A (orchestration only)
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main/-/tree/main/tests[Integration Tests]
+|
 
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-frontend[Frontend]
 |React application with game interface
-|127.0.10.11:8080
+|127.0.10.11:8080 -> /dev11
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-frontend/-/tree/main/tests[Unit & Snapshot Tests]
 
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-api-gateway[API Gateway]
 |Request routing, authentication, rate limiting
-|127.0.10.11:8082
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-api-gateway/-/tree/main/tests[Integration Tests]
+|127.0.10.11:8082 -> /dev11/api
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-api-gateway/-/tree/main/src/tests[Tests]
 
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service[Game Service]
 |Game logic, word validation
 |Internal: game-service:3001
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service/-/tree/main/tests[Unit & API Tests]
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-game-service/-/tree/main/tests[Tests]
 
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-user-service[User Service]
 |User authentication and management
 |Internal: user-service:3002
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-user-service/-/tree/main/tests[API Tests]
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-user-service/-/tree/main/src/tests[Tests]
 
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-profile-service[Profile Service]
 |User profiles, statistics, game albums
 |Internal: profile-service:3003
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-profile-service/-/tree/main/tests[API Tests]
+|
+
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/database.git[Database Setup]
+|Schema initialization, data migrations
+|Internal: database-setup (one-time)
+|
 |===
 
 == Implemented Functionalities
@@ -121,12 +126,12 @@ profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSER
 === User Management
 * **User Registration**: Email and username-based accounts
 * **OAuth2 Authentication**: GitLab IMN integration
-* **JWT Token Management**: Secure stateless authentication
+* **JWT Token Management**: Secure stateless authentication with refresh tokens
 
 === Statistics & Albums
 * **Personal Statistics**: Total games played, win rate and guess distribution
-* **Personal Albums**: Game history, organization of played games into customizable albums
-
+* **Game History**: Complete record of all finished games
+* **Personal Albums**: Organize completed games into customizable collections
 == Run Locally
 
 **Clone the repository**:
@@ -146,6 +151,9 @@ nano .env
 
 chmod +x start-all.sh
 ./start-all.sh
+
+# Access
+http://localhost:3000
 ```
 
 == Service Development
