@@ -38,28 +38,10 @@ const mockFs = {
 
 jest.mock("fs/promises", () => mockFs);
 
+// Environment setup
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
 process.env.JWT_SECRET = "test-secret";
 process.env.WORD_CACHE_PATH = "./test-cache";
-
-beforeAll(() => {
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    if (
-      args[0] &&
-      args[0].includes &&
-      (args[0].includes("GitHub initialization failed") ||
-        args[0].includes("Cache initialization failed"))
-    ) {
-      return;
-    }
-    originalWarn.apply(console, args);
-  };
-});
-
-beforeEach(() => {
-  jest.clearAllMocks();
-});
 
 module.exports = { mockedAxios, mockFs };
