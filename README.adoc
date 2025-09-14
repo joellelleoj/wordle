@@ -42,12 +42,13 @@ The Game Service is a microservice component of the Wordle application that hand
 
 # Manual execution  
 npm install
-npm dev
+npm run build
+npm start
 
 # Run tests
 npm install --save-dev jest
 npm test
-npm run test:coverag
+npm run test:coverage
 
 # Access points
 curl http://localhost:3002/health
