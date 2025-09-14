@@ -1,4 +1,3 @@
-// profile-service/src/services/ProfileService.ts - Cleaned for albums only
 import {
   profileDataAccess,
   GameRecord,
@@ -31,7 +30,6 @@ export interface AlbumWithGames extends GameAlbum {
 export class ProfileService {
   private dataAccess = profileDataAccess;
 
-  // === USER STATISTICS ===
   async calculateUserStatistics(userId: string): Promise<UserStatistics> {
     const stats = await this.dataAccess.getUserStats(userId);
     return {
@@ -47,7 +45,6 @@ export class ProfileService {
     };
   }
 
-  // === ALBUMS (Game picture albums like Bildergallerie) ===
   async createAlbum(
     userId: string,
     albumData: CreateAlbumData
@@ -143,11 +140,6 @@ export class ProfileService {
     }
   }
 
-  // === GAME VISUALIZATION ===
-  /**
-   * Generate a visual representation of a Wordle game
-   * This creates a "screenshot-like" view of the entire game progression
-   */
   async generateGameVisualization(userId: string, gameId: string) {
     return await this.dataAccess.generateGameVisualization(userId, gameId);
   }

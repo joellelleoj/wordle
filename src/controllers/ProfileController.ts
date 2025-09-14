@@ -1,10 +1,7 @@
-// profile-service/src/controllers/ProfileController.ts - Fixed with consistent types
 import { Request, Response } from "express";
 import { ProfileService } from "../services/profileService";
 import { GameRecordingService } from "../services/GameRecordingService";
 import { profileDataAccess } from "../data/ProfileDataAccess";
-
-// Use consistent auth interface
 interface AuthenticatedUser {
   id: string;
   username: string;
@@ -36,12 +33,10 @@ export class ProfileController {
     this.gameRecordingService = new GameRecordingService();
   }
 
-  // Helper method to get authenticated user
   private getAuthenticatedUser(req: Request): AuthenticatedUser | null {
     return req.auth?.user || null;
   }
 
-  // === GAME RECORDING ENDPOINTS ===
   saveGame = async (req: Request, res: Response): Promise<void> => {
     try {
       const user = this.getAuthenticatedUser(req);
@@ -73,14 +68,14 @@ export class ProfileController {
         completedAt: date ? new Date(date) : new Date(),
       });
 
-      console.log(`✅ Game ${gameId} saved successfully for user ${user.id}`);
+      console.log(`Game ${gameId} saved successfully for user ${user.id}`);
       res.status(201).json({
         success: true,
         data: gameRecord,
         message: "Game recorded successfully",
       });
     } catch (error: any) {
-      console.error("❌ Save game error:", error);
+      console.error("Save game error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to save game",
@@ -113,14 +108,14 @@ export class ProfileController {
         offset
       );
 
-      console.log(`✅ Found ${games.length} games for user ${user.id}`);
+      console.log(`Found ${games.length} games for user ${user.id}`);
       res.json({
         success: true,
         data: games,
         pagination: { limit, offset, total: games.length },
       });
     } catch (error: any) {
-      console.error("❌ Get user games error:", error);
+      console.error("Get user games error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to get game history",
@@ -140,7 +135,7 @@ export class ProfileController {
         return;
       }
 
-      console.log(`📊 Calculating stats for user ${user.id}`);
+      console.log(`Calculating stats for user ${user.id}`);
       const stats = await profileDataAccess.getUserStats(user.id);
       console.log(`✅ Stats calculated for user ${user.id}:`, stats);
 
@@ -149,7 +144,7 @@ export class ProfileController {
         data: stats,
       });
     } catch (error: any) {
-      console.error("❌ Get user stats error:", error);
+      console.error("Get user stats error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to get user statistics",
@@ -180,7 +175,7 @@ export class ProfileController {
         return;
       }
 
-      console.log(`📁 Creating album for user ${user.id}:`, {
+      console.log(`Creating album for user ${user.id}:`, {
         title,
         description,
         isPublic,
@@ -193,14 +188,14 @@ export class ProfileController {
         isPublic: Boolean(isPublic),
       });
 
-      console.log(`✅ Album created successfully: ${album.id}`);
+      console.log(`Album created successfully: ${album.id}`);
       res.status(201).json({
         success: true,
         data: album,
         message: "Album created successfully",
       });
     } catch (error: any) {
-      console.error("❌ Create album error:", error);
+      console.error("Create album error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to create album",
@@ -223,13 +218,13 @@ export class ProfileController {
       console.log(`📁 Fetching albums for user ${user.id}`);
       const albums = await profileDataAccess.getUserAlbums(user.id);
 
-      console.log(`✅ Found ${albums.length} albums for user ${user.id}`);
+      console.log(`Found ${albums.length} albums for user ${user.id}`);
       res.json({
         success: true,
         data: albums,
       });
     } catch (error: any) {
-      console.error("❌ Get user albums error:", error);
+      console.error("Get user albums error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to get albums",
@@ -254,7 +249,7 @@ export class ProfileController {
       const album = await profileDataAccess.getAlbumWithGames(albumId, user.id);
 
       if (!album) {
-        console.log(`❌ Album ${albumId} not found for user ${user.id}`);
+        console.log(`Album ${albumId} not found for user ${user.id}`);
         res.status(404).json({
           success: false,
           error: "Album not found",
@@ -263,14 +258,14 @@ export class ProfileController {
       }
 
       console.log(
-        `✅ Album ${albumId} found with ${album.games?.length || 0} games`
+        `Album ${albumId} found with ${album.games?.length || 0} games`
       );
       res.json({
         success: true,
         data: album,
       });
     } catch (error: any) {
-      console.error("❌ Get album error:", error);
+      console.error("Get album error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to get album",
@@ -292,7 +287,7 @@ export class ProfileController {
       const { albumId } = req.params;
       const { title, description, isPublic } = req.body;
 
-      console.log(`📁 Updating album ${albumId} for user ${user.id}:`, {
+      console.log(`Updating album ${albumId} for user ${user.id}:`, {
         title,
         description,
         isPublic,
@@ -309,7 +304,7 @@ export class ProfileController {
       );
 
       if (!updatedAlbum) {
-        console.log(`❌ Album ${albumId} not found for user ${user.id}`);
+        console.log(`Album ${albumId} not found for user ${user.id}`);
         res.status(404).json({
           success: false,
           error: "Album not found",
@@ -317,14 +312,14 @@ export class ProfileController {
         return;
       }
 
-      console.log(`✅ Album ${albumId} updated successfully`);
+      console.log(`Album ${albumId} updated successfully`);
       res.json({
         success: true,
         data: updatedAlbum,
         message: "Album updated successfully",
       });
     } catch (error: any) {
-      console.error("❌ Update album error:", error);
+      console.error("Update album error:", error);
       res.status(500).json({
         success: false,
         error: "Failed to update album",
