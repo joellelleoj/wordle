@@ -74,12 +74,6 @@ npm test
 npm run test:coverag
 
 # Access points
-<<<<<<< Updated upstream
 curl http://localhost:3003/health
 open http://localhost:3003/api-docs
 ----
-=======
-curl http://localhost:3002/health
-open http://localhost:3002/api-docs
-----
->>>>>>> Stashed changes
