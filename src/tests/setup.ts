@@ -1,8 +1,3 @@
-/**
- * Jest Test Setup
- * Configures test environment for User Service
- */
-
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
 process.env.JWT_SECRET = "test-jwt-secret";
@@ -16,15 +11,12 @@ process.env.CLIENT_URL = "http://localhost:3000";
 
 jest.setTimeout(30000);
 
-// Suppress console output during tests except for actual test failures
 const originalError = console.error;
 const originalWarn = console.warn;
 const originalLog = console.log;
 
 beforeAll(() => {
-  // Only suppress expected service logs, not test assertion failures
   console.error = jest.fn((message, ...args) => {
-    // Allow Jest assertion errors to show
     if (
       typeof message === "string" &&
       (message.includes("expect(") ||
@@ -36,7 +28,6 @@ beforeAll(() => {
       return;
     }
 
-    // Suppress expected database/service initialization errors
     if (
       typeof message === "string" &&
       (message.includes("Error finding user") ||
@@ -51,15 +42,14 @@ beforeAll(() => {
         message.includes("Connecting to database") ||
         message.includes("database connection"))
     ) {
-      return; // Suppress these specific errors
+      return;
     }
 
-    // Show all other errors
     originalError(message, ...args);
   });
 
   console.warn = jest.fn();
-  console.log = jest.fn(); // Suppress all console.log during tests
+  console.log = jest.fn();
 });
 
 afterAll(() => {
@@ -76,17 +66,13 @@ afterEach(() => {
 afterAll(async () => {
   jest.clearAllTimers();
   jest.restoreAllMocks();
-
-  // Force close any hanging connections
   if (global.gc) {
     global.gc();
   }
 
-  // Give time for cleanup
   await new Promise((resolve) => setTimeout(resolve, 200));
 });
 
-// Global error handling for unhandled promises
 process.on("unhandledRejection", (reason, promise) => {
   if (process.env.NODE_ENV !== "test") {
     console.warn("Unhandled Promise Rejection in tests:", reason);

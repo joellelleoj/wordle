@@ -380,9 +380,7 @@ export class AuthController {
           return;
         }
       }
-
       console.log("Processing GitLab OAuth callback for universal user");
-
       const redirectUri = this.getGitLabRedirectUri();
 
       // Exchange code for access token

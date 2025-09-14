@@ -15,21 +15,12 @@ export class AuthRoutes {
   }
 
   private initializeRoutes(): void {
-    // Public routes
     this.router.post("/register", this.authController.register);
     this.router.post("/login", this.authController.login);
-
-    // GitLab OAuth routes - FIXED: Single callback endpoint
     this.router.get("/gitlab/login", this.authController.gitlabLogin);
-
-    // CRITICAL FIX: Single callback route that handles both GET and POST
     this.router.all("/callback", this.authController.gitlabCallback);
-
-    // Token management
     this.router.post("/refresh", this.authController.refreshToken);
     this.router.post("/logout", this.authController.logout);
-
-    // Protected routes - require authentication
     this.router.get(
       "/me",
       this.authMiddleware.authenticate,
@@ -43,15 +34,6 @@ export class AuthRoutes {
         service: "auth-service",
         status: "healthy",
         timestamp: new Date().toISOString(),
-        routes: [
-          "GET /gitlab/login",
-          "ALL /callback", // Handles both GET and POST
-          "POST /register",
-          "POST /login",
-          "POST /refresh",
-          "POST /logout",
-          "GET /me",
-        ],
       });
     });
 
@@ -59,17 +41,6 @@ export class AuthRoutes {
     this.router.get("/routes", (req, res) => {
       res.json({
         success: true,
-        note: "OAuth callback now uses single endpoint for both GET and POST",
-        availableRoutes: [
-          "GET /gitlab/login - Initiate OAuth",
-          "GET|POST /callback - GitLab OAuth callback (universal)",
-          "POST /register - Traditional registration",
-          "POST /login - Traditional login",
-          "POST /refresh - Refresh JWT tokens",
-          "POST /logout - Logout user",
-          "GET /me - Get current user (protected)",
-          "GET /health - Service health check",
-        ],
         redirectUri:
           process.env.GITLAB_REDIRECT_URI ||
           "http://localhost:3003/api/v1/auth/callback",
