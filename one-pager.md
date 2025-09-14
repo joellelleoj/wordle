@@ -1,58 +1,46 @@
-# =============================================================================
+# Wordle Web Application
 
-# one-pager.md - University Website Summary
+## Projektbeschreibung
 
-# =============================================================================
+Das Wordle Web Engineering Projekt ist eine Full-Stack-Implementierung des Worträtsel-Spiels als Web-Anwendung. Benutzer können sich registrieren oder einloggen, um Spiele zu spielen und ihre Fortschritte zu speichern. Das Ziel ist es, in maximal 6 Versuchen ein 5-Buchstaben-Wort zu erraten.
 
-# Wordle Game - Microservices Implementation
+## Architektur und Features
 
-## Project Summary
+- Frontend
+  - Spiel:
+    - Farbkodierung der Buchstaben für abgegebene Wörter
+    - Flip Animation bei gültigen Wörtern
+    - Vibration bei ungültigen Eingaben
+  - Profile:
+    - Anzeige der Statistiken
+    - Übersicht fertig gespielter Spiele
+    - Erstellen, Bearbeiten und Löschen von Spielalben
+- API Gateway: HTTP Request Routing an entsprechende Backend Services
+- Game Service
+  - Bewertungsalgorithmus für Buchstaben-Feedback
+  - Wortvalidierung gegen Wörterdatenbank
+- User Service
+  - Benutzerregistrierung mit Username, Email und Passwort
+  - OAuth2-Authentifizierung über GitLab IMN-Account
+  - JWT-basierte Authentifizierung mit automatischer Token-Erneuerung
+- Profile Service
+  - Berechnung der Statistiken: Anzahl gewonnener Spiele, Siegerate, Verteilung der Versuche
+  - Speicherung der Spielhistorie und der personalisierbare Spielalben
+- Wörterdatenbank
+  - Externe Git-Repository als Quelle
+  - Fallback auf hardcodierte Wortliste
+- PostgreSQL Datenbank
+  - Relationale Datenbank für Benutzer- und Spieldaten
+  - Zugriff über DataAccessService-Layer
 
-A complete implementation of the popular Wordle word-guessing game, developed as a modern microservices application for the Web Engineering (C227) course at HTWK Leipzig. The project demonstrates advanced web development concepts including containerization, API gateway patterns, and cloud-native architecture.
+Alle Services laufen in seperaten Docker-Containern mit klarer Trennung der Verantwortlichkeiten.
 
-## Key Features
+**Live-URL:** https://devstud.imn.htwk-leipzig.de/dev11
 
-- **Classic Wordle Gameplay**: Daily 5-letter word puzzles with color-coded feedback
-- **User Authentication**: Secure OAuth2 integration with GitLab IMN
-- **Statistics Tracking**: Personal performance metrics and global leaderboards
-- **Social Features**: Share game results and follow other players
-- **Real-time Updates**: Live statistics and instant game feedback
+**Source Code:** https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle
 
-## Technical Highlights
+![Game Page.](wordle.png "game page")
 
-### Architecture
+#
 
-- **Microservices Design**: Six independent services with clear separation of concerns
-- **API Gateway Pattern**: Centralized routing, authentication, and rate limiting
-- **Containerization**: Complete Docker-based deployment with orchestration
-- **Database Separation**: Dedicated databases for different domains
-
-### Technologies Used
-
-- **Frontend**: React with TypeScript and responsive design
-- **Backend**: Node.js microservices with Express.js
-- **Databases**: PostgreSQL for persistence, Redis for caching
-- **Security**: JWT authentication, OAuth2 integration, rate limiting
-- **DevOps**: GitLab CI/CD, automated testing, health monitoring
-
-### 12-Factor App Compliance
-
-The application strictly follows the 12-Factor App methodology:
-
-- Environment-based configuration
-- Stateless processes with external state storage
-- Port binding and horizontal scalability
-- Comprehensive logging and monitoring
-
-## Live Demo
-
-🌐 **Access the application**: [http://devstud.imn.htwk-leipzig.de/dev11](http://devstud.imn.htwk-leipzig.de/dev11)
-
-## Team & Development
-
-**Development Team**: Web Engineering Student Group  
-**Course**: Web Engineering (C227) - Summer Semester 2025  
-**Institution**: HTWK Leipzig  
-**Supervisor**: Prof. Dr. Andreas Both
-
-The project showcases modern web development practices and enterprise-grade architecture patterns, making it an excellent demonstration of full-stack development capabilities and cloud-native application design.
+_Entwickelt im Rahmen des Moduls "Web Engineering (C227)" - Sommersemester 2025_

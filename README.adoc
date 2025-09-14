@@ -7,65 +7,69 @@
 
 == Project Overview
 
-This is a complete implementation of the Wordle word guessing game, built as a microservices application following the 12-Factor App methodology for the Web Engineering (C227) course at HTWK Leipzig.
-
 === Live Application
 
-* 🌐 **Production URL**: http://devstud.imn.htwk-leipzig.de/dev11
-* 📡 **API Documentation**: http://devstud.imn.htwk-leipzig.de/dev11/api/docs
+* Running on Server: http://devstud.imn.htwk-leipzig.de/dev11
 
 === Architecture
 
-The application follows a microservices architecture with complete separation of concerns:
 
 [plantuml, architecture-diagram, svg]
 ----
 @startuml
+!theme reddress-lightblue
 !define RECTANGLE class
+
+actor "User" as enduser
 
 package "External Access" {
   [Nginx Reverse Proxy] as nginx
-  note right : devstud.imn.htwk-leipzig.de\n/dev11 -> :8080\n/dev11/api -> :8082
+  note right of nginx : devstud.imn.htwk-leipzig.de
 }
 
-package "Frontend Layer" {
+package "Presentation Layer" {
   [React Frontend] as frontend
-  note right : Port: 8080\nReact + TypeScript
 }
 
 package "API Layer" {
   [API Gateway] as gateway
-  note right : Port: 8082\nRouting, Auth, Rate Limiting
 }
 
 package "Business Services" {
-  [User Service] as user
   [Game Service] as game
-  [Profile Service] as profile
+  [User Service] as userservice
+  [Profile Service] as profileservice
   
-  note right of user : Authentication\nUser Management
-  note right of game : Game Logic\nWord Validation
-  note right of profile : Statistics\nSocial Features
 }
 
-package "Data Layer" {
-  database "Main DB" as maindb
-  database "Dictionary DB" as dictdb
-  database "Redis Cache" as redis
+package "Data Sources" {
+  cloud "GitHub Word List" as wordlist
+  database "PostgreSQL" as postgres
+  
+  note right of wordlist : https://raw.githubusercontent.com/\ntabatkins/wordle-list/main/words
 }
 
-nginx -down-> frontend : :8080
-nginx -down-> gateway : :8082
-frontend -down-> gateway : REST API
-gateway -down-> user
-gateway -down-> game
-gateway -down-> profile
-user -down-> maindb
-user -down-> redis
-game -down-> maindb
-game -down-> dictdb
-profile -down-> maindb
+' User interactions
+enduser -down-> nginx : HTTPS Requests
 
+' Nginx routing
+nginx -down-> frontend : /dev11\n(Port 8080)
+nginx -down-> gateway : /dev11/api2\n(Port 8081)
+
+' Frontend to API Gateway
+frontend -down-> gateway : /api/game/*\n/api/users/*\n/api/profile/*
+
+' API Gateway routing
+gateway -down-> game : POST /new\nPOST /{gameId}/guess\nGET /{gameId}\nGET /health
+
+gateway -down-> userservice : POST /auth/register\nPOST /auth/login\nPOST /v1/gitlab/login\nGET /v1/callback\nPOST /auth/refresh\n POST /auth/logout 
+
+gateway -down-> profileservice : GET /stats\n GET /games?limit=${limit}&offset=${offset}\n POST /games\n GET /albums\n GET /albums/${albumId}\n PUT /albums/${albumId}\n DELETE /albums/${albumId}\n POST /albums/${albumId}/games/${gameId}\n DELETE /albums/${albumId}/games/${gameId}\n
+
+' Service data access
+game -down-> wordlist : GET Word Dictionary
+userservice -down-> postgres : SELECT * FROM user_schema.users\nINSERT INTO user_schema.users\nUPDATE user_schema.users\nINSERT INTO user_schema.user_sessions\nSELECT * FROM user_schema.user_sessions\nDELETE FROM user_schema.user_sessions
+profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSERT INTO profile_schema.user_stats\nUPDATE profile_schema.user_stats\nINSERT INTO profile_schema.game_records\n
 @enduml
 ----
 
@@ -75,7 +79,7 @@ profile -down-> maindb
 |===
 |Component |Description |Deployed Address |Tests
 
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main[Main Repository]
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-deployment[Main Repository]
 |Project orchestration and documentation
 |N/A (orchestration only)
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main/-/tree/main/tests[Integration Tests]
@@ -90,249 +94,67 @@ profile -down-> maindb
 |127.0.10.11:8082
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-api-gateway/-/tree/main/tests[Integration Tests]
 
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service[Game Service]
+|Game logic, word validation
+|Internal: game-service:3001
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service/-/tree/main/tests[Unit & API Tests]
+
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-user-service[User Service]
 |User authentication and management
 |Internal: user-service:3002
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-user-service/-/tree/main/tests[API Tests]
 
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service[Game Service]
-|Game logic, word validation, daily words
-|Internal: game-service:3001
-|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service/-/tree/main/tests[Unit & API Tests]
-
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-profile-service[Profile Service]
-|User profiles, statistics, social features
+|User profiles, statistics, game albums
 |Internal: profile-service:3003
 |link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-profile-service/-/tree/main/tests[API Tests]
 |===
 
 == Implemented Functionalities
 
-=== Core Game Features
-* ✅ **Classic Wordle Gameplay**: 6 attempts to guess a 5-letter word
-* ✅ **Daily Word System**: New word every day with seed-based generation
-* ✅ **Word Validation**: Comprehensive dictionary with 10,000+ words
-* ✅ **Visual Feedback**: Color-coded tiles (green/yellow/gray)
-* ✅ **Game State Management**: Save and resume games
-* ✅ **Hard Mode**: Use revealed hints in subsequent guesses
+=== Game Features
+* **Classic Wordle Gameplay**: 6 attempts to guess a 5-letter word
+* **Word Validation**: Comprehensive dictionary with 10,000+ words
+* **Visual Feedback**: Color-coded tiles (green/yellow/gray)
+* **Game State Management**: Save and resume games
 
 === User Management
-* ✅ **User Registration**: Email and username-based accounts
-* ✅ **OAuth2 Authentication**: GitLab IMN integration
-* ✅ **JWT Token Management**: Secure stateless authentication
-* ✅ **Profile Management**: Customizable user profiles
-* ✅ **Session Management**: Redis-based session storage
+* **User Registration**: Email and username-based accounts
+* **OAuth2 Authentication**: GitLab IMN integration
+* **JWT Token Management**: Secure stateless authentication
 
-=== Statistics & Analytics
-* ✅ **Personal Statistics**: Win rate, streak tracking, guess distribution
-* ✅ **Global Leaderboards**: Daily, weekly, and all-time rankings
-* ✅ **Performance Metrics**: Average guesses, fastest solve times
-* ✅ **Progress Tracking**: Historical game data and trends
+=== Statistics & Albums
+* **Personal Statistics**: Total games played, win rate and guess distribution
+* **Personal Albums**: Game history, organization of played games into customizable albums
 
-=== Social Features
-* ✅ **Game Sharing**: Post completed games with results
-* ✅ **Profile Posts**: Share achievements and comments
-* ✅ **User Search**: Find and follow other players
-* ✅ **Social Timeline**: View friends' game results
+== Run Locally
 
-=== Technical Features
-* ✅ **Responsive Design**: Mobile and desktop optimized
-* ✅ **Real-time Updates**: Live statistics and leaderboards
-* ✅ **Rate Limiting**: API protection and abuse prevention
-* ✅ **Comprehensive Logging**: Structured application logging
-* ✅ **Health Monitoring**: Service health checks and monitoring
-
-== Quick Start
-
-=== Prerequisites
-* Linux operating system
-* Docker or Podman with compose support
-* Git
-* curl (for health checks)
-
-=== Installation
-
-1. **Clone the repository**:
+**Clone the repository**:
 ```bash
-git clone https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main.git
-cd wordle-main
-```
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/database.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-api-gateway.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-deployment.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-frontend.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-game-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-profile-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-user-service.git
 
-2. **Configure environment**:
-```bash
-cp .env.example .env
-# Edit .env with your specific configuration
+cd wordle-deployment
+
+# configure environemnt in .env
 nano .env
-```
 
-3. **Start the application**:
-```bash
+chmod +x start-all.sh
 ./start-all.sh
 ```
 
-4. **Verify deployment**:
-```bash
-./health-check.sh
-```
-
-=== Environment Configuration
-
-Key environment variables that must be configured:
-
-```bash
-# Database passwords
-POSTGRES_PASSWORD=your_secure_password
-DICT_POSTGRES_PASSWORD=your_dict_password
-REDIS_PASSWORD=your_redis_password
-
-# Security keys
-JWT_SECRET=your_jwt_secret_key
-
-# OAuth2 configuration
-OAUTH_GITLAB_CLIENT_ID=your_gitlab_app_id
-OAUTH_GITLAB_CLIENT_SECRET=your_gitlab_app_secret
-```
-
-== Development
-
-=== Local Development Setup
-
-1. **Start development environment**:
-```bash
-./start-all.sh --development
-```
-
-2. **View logs**:
-```bash
-./logs.sh follow api-gateway
-./logs.sh errors
-```
-
-3. **Run tests**:
-```bash
-docker-compose exec api-gateway npm test
-```
-
-=== Service Development
+== Service Development
 
 Each service can be developed independently:
 
 ```bash
-# Work on frontend
-cd ../wordle-frontend
+cd ../folder-name
 npm install
-npm run dev
-
-# Work on a specific service
-cd ../wordle-game-service
-npm install
-npm run dev
+npm run build
+npm start
 ```
-
-== Deployment
-
-=== Production Deployment
-
-The application automatically deploys to the devstud server via GitLab CI/CD:
-
-1. **Automatic deployment** triggers on push to `main` branch
-2. **Manual deployment** available via GitLab pipeline interface
-3. **Health checks** run automatically after deployment
-4. **Rollback** available via GitLab environments
-
-=== Manual Deployment
-
-For manual deployment to the devstud server:
-
-```bash
-# Copy files to server
-scp -r . dev11@devstud.imn.htwk-leipzig.de:/home/dev11/wordle-production/
-
-# SSH to server and deploy
-ssh dev11@devstud.imn.htwk-leipzig.de
-cd /home/dev11/wordle-production
-./start-all.sh --production
-```
-
-== Monitoring & Maintenance
-
-=== Health Monitoring
-
-```bash
-# Check all services
-./health-check.sh
-
-# Check specific service logs
-./logs.sh logs user-service
-
-# Export logs for analysis
-./logs.sh export api-gateway
-```
-
-=== Database Management
-
-```bash
-# Run database migrations
-./start-all.sh --migrate-only
-
-# Backup databases
-docker-compose exec postgres-main pg_dump -U wordle_user wordle_main > backup.sql
-
-# Access database console
-docker-compose exec postgres-main psql -U wordle_user -d wordle_main
-```
-
-=== Performance Monitoring
-
-```bash
-# View resource usage
-docker stats
-
-# Monitor API performance
-curl -w "@curl-format.txt" http://127.0.10.11:8082/health
-```
-
-== Troubleshooting
-
-=== Common Issues
-
-**Services won't start**:
-```bash
-# Check logs
-./logs.sh errors
-
-# Clean restart
-./stop-all.sh --clean
-./start-all.sh
-```
-
-**Database connection issues**:
-```bash
-# Check database status
-docker-compose exec postgres-main pg_isready -U wordle_user
-
-# Reset database
-./stop-all.sh --clean
-./start-all.sh
-```
-
-**API Gateway errors**:
-```bash
-# Check service connectivity
-./logs.sh follow api-gateway
-
-# Test internal services
-docker-compose exec api-gateway curl http://user-service:3002/health
-```
-
-=== Support
-
-For issues and questions:
-
-* 📧 **Email**: your-team@student.htwk-leipzig.de
-* 🐛 **Issues**: https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main/-/issues
-* 📖 **Wiki**: https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-main/-/wikis/home
-
-== License
-
-This project is developed for academic purposes as part of the Web Engineering course at HTWK Leipzig.

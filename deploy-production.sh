@@ -1,3 +1,12 @@
+🚀 Starting Complete Wordle Application Stack
+==============================================
+✅ Using: podman with docker-compose
+📄 Loading environment variables from .env.prod
+🔍 Verifying environment variables...
+NODE_ENV: production
+./deploy.sh: line 165: unexpected EOF while lookin
+
+dev11@devstud:~/wordle-project/wordle-deployment$ cat deploy.sh
 #!/bin/bash
 set -e
 
@@ -6,218 +15,160 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Server configuration
-SERVER_HOST="devstud.imn.htwk-leipzig.de"
-SERVER_IP="141.57.8.199"
-SERVER_USER="dev11"
-CONTAINER_HOST="127.0.10.11"
-DEPLOY_DIR="/home/dev11/wordle-deployment"
+echo "🚀 Starting Complete Wordle Application Stack"
+echo "=============================================="
 
-echo -e "${CYAN}🚀 Wordle Production Deployment Script${NC}"
-echo "==========================================="
-echo -e "${BLUE}Target Server:${NC} $SERVER_HOST ($SERVER_IP)"
-echo -e "${BLUE}SSH User:${NC} $SERVER_USER"
-echo -e "${BLUE}Deploy Directory:${NC} $DEPLOY_DIR"
-echo ""
+COMPOSE_FILE="docker-compose.prod.yml"
 
-# Function to execute commands on remote server via SSH
-execute_remote() {
-    local cmd="$1"
-    echo -e "${YELLOW}[REMOTE]${NC} $cmd"
-    ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "$cmd"
-}
-
-# Function to copy files to remote server
-copy_to_server() {
-    local local_path="$1"
-    local remote_path="$2"
-    echo -e "${YELLOW}[COPY]${NC} $local_path -> $remote_path"
-    scp -o StrictHostKeyChecking=no -r "$local_path" "$SERVER_USER@$SERVER_IP:$remote_path"
-}
-
-# Verify we're in the right directory
-if [ ! -f "docker-compose.prod.yml" ] || [ ! -f ".env.prod" ]; then
-    echo -e "${RED}❌ Missing required files. Please ensure you're in the deployment directory with:${NC}"
-    echo "   - docker-compose.prod.yml"
-    echo "   - .env.prod"
-    echo "   - All service directories (wordle-frontend, wordle-*-service, database)"
+# Copy environment file
+if [ ! -f ".env.prod" ]; then
+    echo -e "${RED}❌ Missing .env.prod file${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Local files verified${NC}"
+# Check for container runtime
+CONTAINER_CMD=""
+COMPOSE_CMD=""
 
-# Test SSH connection
-echo -e "${BLUE}🔐 Testing SSH connection...${NC}"
-if ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$SERVER_USER@$SERVER_IP" "echo 'SSH connection successful'"; then
-    echo -e "${RED}❌ Cannot connect to server. Please check:${NC}"
-    echo "   - Server is accessible: $SERVER_IP"
-    echo "   - SSH credentials are correct"
-    echo "   - Your SSH key is set up or you can provide password"
-    exit 1
-fi
-echo -e "${GREEN}✅ SSH connection established${NC}"
-
-# Create deployment directory on server
-echo -e "${BLUE}📁 Preparing deployment directory...${NC}"
-execute_remote "mkdir -p $DEPLOY_DIR"
-execute_remote "cd $DEPLOY_DIR && rm -rf wordle-*/ database/ docker-compose.prod.yml .env 2>/dev/null || true"
-
-# Copy all project files to server
-echo -e "${BLUE}📦 Copying project files to server...${NC}"
-
-# Copy service directories
-for dir in wordle-frontend wordle-*-service database; do
-    if [ -d "$dir" ]; then
-        echo -e "${YELLOW}Copying $dir...${NC}"
-        copy_to_server "$dir/" "$DEPLOY_DIR/$dir/"
+if command -v podman &> /dev/null; then
+    CONTAINER_CMD="podman"
+    if command -v podman-compose &> /dev/null; then
+        COMPOSE_CMD="podman-compose"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    else
+        echo -e "${RED}❌ No compose command found${NC}"
+        exit 1
     fi
-done
+elif command -v docker &> /dev/null; then
+    CONTAINER_CMD="docker"
+    if command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    elif docker compose version &> /dev/null 2>&1; then
+        COMPOSE_CMD="docker compose"
+    else
+        echo -e "${RED}❌ No compose command found${NC}"
+        exit 1
+    fi
+else
+    echo -e "${RED}❌ Neither Docker nor Podman is installed${NC}"
+    exit 1
+fi
 
-# Copy deployment files
-copy_to_server "docker-compose.prod.yml" "$DEPLOY_DIR/"
-copy_to_server ".env.prod" "$DEPLOY_DIR/.env"
+echo -e "${BLUE}✅ Using: $CONTAINER_CMD with $COMPOSE_CMD${NC}"
 
-echo -e "${GREEN}✅ All files copied to server${NC}"
+# Check if container runtime is running
+if ! $CONTAINER_CMD info &> /dev/null; then
+    echo -e "${RED}❌ $CONTAINER_CMD is not running${NC}"
+    exit 1
+fi
+
+# Check if we're in the correct directory
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo -e "${RED}❌ $COMPOSE_FILE not found. Please run from the deployment directory.${NC}"
+    exit 1
+fi
+
+# Load environment variables
+echo -e "${BLUE}📄 Loading environment variables from .env.prod${NC}"
+set -a
+source .env.prod
+set +a
+
+# Verify critical variables are loaded
+echo -e "${BLUE}🔍 Verifying environment variables...${NC}"
+echo "NODE_ENV: ${NODE_ENV:-NOT_SET}"
+echo "EXTERNAL_FRONTEND_PORT: ${EXTERNAL_FRONTEND_PORT"
+echo "EXTERNAL_USER_SERVICE_PORT: ${EXTERNAL_USER_SERVICE_PORT"
+echo "POSTGRES_DB: ${POSTGRES_DB:-NOT_SET}"
 
 # Stop any running containers
-echo -e "${BLUE}🛑 Stopping any running containers...${NC}"
-execute_remote "cd $DEPLOY_DIR && docker-compose down --remove-orphans 2>/dev/null || true"
-execute_remote "cd $DEPLOY_DIR && docker container prune -f 2>/dev/null || true"
-execute_remote "cd $DEPLOY_DIR && docker image prune -f 2>/dev/null || true"
+echo -e "${YELLOW}🛑 Stopping existing containers...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE down --remove-orphans 2>/dev/null || true
 
-# Check Docker availability
-echo -e "${BLUE}🐳 Checking Docker availability...${NC}"
-execute_remote "docker --version"
-execute_remote "docker-compose --version"
+# Clean up any orphaned containers
+$CONTAINER_CMD container prune -f 2>/dev/null || true
+$CONTAINER_CMD network prune -f 2>/dev/null || true
 
-# Load environment variables on server and start deployment
-echo -e "${BLUE}🚀 Starting production deployment...${NC}"
+echo -e "${BLUE}🔨 Building and starting services in correct order...${NC}"
 
-# Create deployment script on server
-execute_remote "cat > $DEPLOY_DIR/server-deploy.sh << 'EOF'
-#!/bin/bash
-set -e
-
-cd $DEPLOY_DIR
-export \$(cat .env | grep -v '^#' | grep -v '^\$' | xargs)
-
-echo '🔨 Building and starting services in production mode...'
-
-# Step 1: Start PostgreSQL
-echo '📅 Step 1: Starting PostgreSQL database...'
-docker-compose up -d postgres
+# Start services in dependency order
+echo -e "${YELLOW}📅 Step 1: Starting PostgreSQL database...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE up -d postgres
 sleep 15
 
-# Step 2: Run database setup
-echo '📅 Step 2: Running database setup...'
-docker-compose up --build database-setup
+echo -e "${YELLOW}📅 Step 2: Running database setup...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE up --build database-setup
 sleep 10
 
-# Step 3: Start internal services
-echo '📅 Step 3: Starting internal services...'
-docker-compose up --build -d user-service game-service profile-service
+echo -e "${YELLOW}📅 Step 3: Starting core services...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE up --build -d user-service game-service profile-service
 sleep 20
 
-# Step 4: Start API Gateway (exposed on 8081)
-echo '📅 Step 4: Starting API gateway...'
-docker-compose up --build -d api-gateway
+echo -e "${YELLOW}📅 Step 4: Starting API gateway...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE up --build -d api-gateway
 sleep 15
 
-# Step 5: Start Frontend (exposed on 8080)
-echo '📅 Step 5: Starting frontend...'
-docker-compose up --build -d frontend
-sleep 10
+echo -e "${YELLOW}📅 Step 5: Starting frontend...${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE up --build -d frontend
+sleep 15
 
-echo '⏳ Waiting for all services to fully initialize...'
+# Wait for all services to be ready
+echo -e "${YELLOW}⏳ Waiting for services to fully initialize...${NC}"
 sleep 30
 
-echo '🏥 Checking service health...'
-docker-compose ps
+# Check service health
+echo -e "${BLUE}🏥 Checking service health...${NC}"
 
-echo '✅ Production deployment completed!'
-echo ''
-echo '🌐 Application URLs:'
-echo '   Frontend: https://$SERVER_HOST/dev11'
-echo '   API Gateway: https://$SERVER_HOST/dev11/api2'
-echo ''
-echo 'Container mapping:'
-echo '   Frontend: $CONTAINER_HOST:8080 -> /dev11'
-echo '   API Gateway: $CONTAINER_HOST:8081 -> /dev11/api2'
-EOF"
-
-# Make the script executable and run it
-execute_remote "chmod +x $DEPLOY_DIR/server-deploy.sh"
-echo -e "${BLUE}🎬 Executing deployment on server...${NC}"
-execute_remote "$DEPLOY_DIR/server-deploy.sh"
-
-# Final health checks
-echo -e "${BLUE}🏥 Performing final health checks...${NC}"
-
-# Check if containers are running
-echo -e "${YELLOW}Container Status:${NC}"
-execute_remote "cd $DEPLOY_DIR && docker-compose ps"
+# Production URLs
+echo -e "${BLUE}🌐 Production URLs:${NC}"
+echo -e "${BLUE}📱 Frontend:${NC} https://devstud.imn.htwk-leipzig.de/dev11"
+echo -e "${BLUE}🔗 API Gateway:${NC} https://devstud.imn.htwk-leipzig.de/dev11/api2"
 
 # Test endpoints
-echo -e "${YELLOW}Testing endpoints...${NC}"
+echo -e "${YELLOW}🔍 Testing local endpoints...${NC}"
 
-# Test frontend
-if execute_remote "curl -f -s http://$CONTAINER_HOST:8080 > /dev/null 2>&1"; then
-    echo -e "${GREEN}✅ Frontend is responding${NC}"
+if curl -f -s http://127.0.10.11:8080 > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Frontend is healthy at 127.0.10.11:8080${NC}"
 else
-    echo -e "${YELLOW}⚠️ Frontend may still be starting up${NC}"
+    echo -e "${YELLOW}⚠️ Frontend may still be starting up at 127.0.10.11:8080${NC}"
 fi
 
-# Test API Gateway
-if execute_remote "curl -f -s http://$CONTAINER_HOST:8081/health > /dev/null 2>&1"; then
-    echo -e "${GREEN}✅ API Gateway is responding${NC}"
+if curl -f -s http://127.0.10.11:8081/health > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ API Gateway is healthy at 127.0.10.11:8081${NC}"
 else
-    echo -e "${YELLOW}⚠️ API Gateway may still be starting up${NC}"
+    echo -e "${YELLOW}⚠️ API Gateway may still be starting up at 127.0.10.11:8081${NC}"
 fi
 
-# Check reverse proxy logs for any errors
-echo -e "${YELLOW}Checking reverse proxy logs for errors...${NC}"
-execute_remote "tail -n 20 /var/log/nginx/error.log 2>/dev/null || echo 'No recent nginx errors'"
+# Show final status
+echo ""
+echo -e "${GREEN}🎉 Wordle Application Stack Started!${NC}"
+echo "=============================================="
 
-# Final status
 echo ""
-echo -e "${GREEN}🎉 DEPLOYMENT COMPLETE!${NC}"
-echo "==========================================="
+echo -e "${BLUE}📊 Service Status:${NC}"
+$COMPOSE_CMD -f $COMPOSE_FILE ps
+
 echo ""
-echo -e "${CYAN}🌐 Production URLs:${NC}"
-echo -e "${GREEN}   📱 Frontend:${NC} https://$SERVER_HOST/dev11"
-echo -e "${GREEN}   🔗 API Gateway:${NC} https://$SERVER_HOST/dev11/api2"
+echo -e "${BLUE}📋 Useful Commands:${NC}"
+echo "  $COMPOSE_CMD -f $COMPOSE_FILE logs -f [service]     # View logs"
+echo "  $COMPOSE_CMD -f $COMPOSE_FILE logs -f              # View all logs"
+echo "  $COMPOSE_CMD -f $COMPOSE_FILE stop                 # Stop all services"
+echo "  $COMPOSE_CMD -f $COMPOSE_FILE down                 # Stop and remove"
+echo "  $COMPOSE_CMD -f $COMPOSE_FILE restart [service]    # Restart service"
+
 echo ""
-echo -e "${CYAN}📊 Server Information:${NC}"
-echo -e "${BLUE}   🖥️ Server Host:${NC} $SERVER_HOST"
-echo -e "${BLUE}   🌍 Server IP:${NC} $SERVER_IP"
-echo -e "${BLUE}   👤 SSH User:${NC} $SERVER_USER"
-echo -e "${BLUE}   📁 Deploy Path:${NC} $DEPLOY_DIR"
+echo -e "${BLUE}🧪 Quick Tests:${NC}"
+echo "curl http://127.0.10.11:8080         # Frontend"
+echo "curl http://127.0.10.11:8081/health  # API Gateway health"
+echo "curl https://devstud.imn.htwk-leipzig.de/dev11"
+echo "curl https://devstud.imn.htwk-leipzig.de/dev11/api2/health"
+
 echo ""
-echo -e "${CYAN}🐳 Container Mapping:${NC}"
-echo -e "${BLUE}   Frontend:${NC} $CONTAINER_HOST:8080 → /dev11"
-echo -e "${BLUE}   API Gateway:${NC} $CONTAINER_HOST:8081 → /dev11/api2"
-echo ""
-echo -e "${CYAN}📋 Useful Management Commands:${NC}"
-echo -e "${YELLOW}   # Connect to server${NC}"
-echo "   ssh $SERVER_USER@$SERVER_IP"
-echo ""
-echo -e "${YELLOW}   # Check deployment status${NC}"
-echo "   ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_DIR && docker-compose ps'"
-echo ""
-echo -e "${YELLOW}   # View logs${NC}"
-echo "   ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_DIR && docker-compose logs -f'"
-echo ""
-echo -e "${YELLOW}   # Restart services${NC}"
-echo "   ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_DIR && docker-compose restart'"
-echo ""
-echo -e "${YELLOW}   # Stop deployment${NC}"
-echo "   ssh $SERVER_USER@$SERVER_IP 'cd $DEPLOY_DIR && docker-compose down'"
-echo ""
-echo -e "${GREEN}🧪 Quick Test:${NC}"
-echo "   curl https://$SERVER_HOST/dev11"
-echo "   curl https://$SERVER_HOST/dev11/api2/health"
-echo ""
-echo -e "${BLUE}Happy Wordling! 🎮${NC}"
+echo -e "${BLUE}📝 Environment Configuration:${NC}"
+echo "  Environment: $NODE_ENV"
+echo "  Database: ${POSTGRES_DB}"
+echo "  Frontend Port: ${FRONTEND_PORT}"
+echo "  API Gateway Port: ${API_GATEWAY_PORT}"
