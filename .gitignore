@@ -7,3 +7,4 @@ build/
 cleanup.sh
 coverage/
 .env
+package-lock.json
