@@ -11,6 +11,29 @@
 
 * Running on Server: http://devstud.imn.htwk-leipzig.de/dev11
 
+=== Instructions
+**Clone the repository**:
+```bash
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/database.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-api-gateway.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-deployment.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-frontend.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-game-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-profile-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-user-service.git
+
+cd wordle-deployment
+
+# configure environemnt in .env
+nano .env
+
+chmod +x start-all.sh
+./start-all.sh
+
+# Access
+http://localhost:3000
+```
+
 === Architecture
 
 
@@ -132,29 +155,6 @@ profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSER
 * **Personal Statistics**: Total games played, win rate and guess distribution
 * **Game History**: Complete record of all finished games
 * **Personal Albums**: Organize completed games into customizable collections
-== Run Locally
-
-**Clone the repository**:
-```bash
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/database.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-api-gateway.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-deployment.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-frontend.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-game-service.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-profile-service.git
-git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-user-service.git
-
-cd wordle-deployment
-
-# configure environemnt in .env
-nano .env
-
-chmod +x start-all.sh
-./start-all.sh
-
-# Access
-http://localhost:3000
-```
 
 == Service Development
 
