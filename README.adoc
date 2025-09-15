@@ -38,5 +38,4 @@ npm start
 
 # Access points
 curl http://localhost:3004/health
-open http://localhost:3004/api-docs
 ----
