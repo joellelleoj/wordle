@@ -35,4 +35,8 @@ The Profile Service is a microservice component of the Wordle application that h
 npm install
 npm run build
 npm start
+
+# Access points
+curl http://localhost:3004/health
+open http://localhost:3004/api-docs
 ----
