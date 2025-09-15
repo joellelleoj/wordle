@@ -6,26 +6,28 @@ The API Gateway serves as the central entry point for the Wordle microservices a
 
 == Deployment Information
 Deployed Address: http://127.0.10.11:8002
+
 Public URL: http://devstud.imn.htwk-leipzig.de/dev11/api2
+
 Documentation: http://127.0.10.11:8002/api-docs/
 
 == Features
 
 === Request Routing
-    User authentication: /api/users/* → User Service
-    Game operations: /api/game/* → Game Service
-    Profile management: /api/profile/* → Profile Service
+- User authentication: /api/users/* → User Service
+- Game operations: /api/game/* → Game Service
+- Profile management: /api/profile/* → Profile Service
 
 === Authentication
-    JWT token validation for production
-    GitLab OAuth2 integration
-    Automatic auth context injection
+- JWT token validation for production
+- GitLab OAuth2 integration
+- Automatic auth context injection
 
 === Cross-Service Features
-    CORS configuration for web clients
-    Request/response logging
-    Error handling and service fallbacks
-    Health monitoring
+- CORS configuration for web clients
+- Request/response logging
+- Error handling and service fallbacks
+- Health monitoring
 
 == Local Development
 ```bash
