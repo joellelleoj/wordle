@@ -148,34 +148,3 @@ class GameService {
 }
 
 export const gameService = new GameService();
-
-/*// For local testing, use localhost
-const API_URL = "http://localhost:8082/api";
-
-export const gameApi = {
-  async createGame(): Promise<{ gameId: string }> {
-    const res = await fetch(`${API_URL}/game/new`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error("Failed to create game");
-    return res.json();
-  },
-
-  async submitGuess(gameId: string, guess: string): Promise<any> {
-    const res = await fetch(`${API_URL}/game/${gameId}/guess`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ guess }),
-    });
-    if (!res.ok) throw new Error("Failed to submit guess");
-    return res.json();
-  },
-
-  async getGameState(gameId: string): Promise<any> {
-    const res = await fetch(`${API_URL}/game/${gameId}`);
-    if (!res.ok) throw new Error("Failed to get game state");
-    return res.json();
-  },
-};
-*/
