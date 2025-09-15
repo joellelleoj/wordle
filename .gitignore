@@ -90,4 +90,4 @@ temp/
 
 # Docker
 .dockerignore
-Dockerfile.dev
+Dockerfile.devpackage-lock.json
