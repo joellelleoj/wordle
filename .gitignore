@@ -1,5 +1,4 @@
 dist/
-package-lock.json
 postgres-data;C
 node_modules
-build
+buildpackage-lock.json

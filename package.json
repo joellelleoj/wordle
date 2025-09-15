@@ -1,7 +1,7 @@
 {
   "name": "wordle-database-setup",
   "version": "1.0.0",
-  "description": "Database initialization and setup for Wordle application",
+  "description": "Database initialization",
   "main": "dist/database.js",
   "scripts": {
     "dev": "tsx database.ts",
