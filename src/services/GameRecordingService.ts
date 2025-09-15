@@ -1,4 +1,3 @@
-// profile-service/src/services/GameRecordingService.ts - Fixed implementation
 import { ProfileDataAccess } from "../data/ProfileDataAccess";
 
 export interface GameRecordData {

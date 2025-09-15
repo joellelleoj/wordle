@@ -1,0 +1,38 @@
+= Wordle Profile Service
+
+== Overview
+
+The Profile Service is a microservice component of the Wordle application that handles user game statistics, game recording, album management, and profile data. It manages game history, calculates win rates and streaks, and provides visualization capabilities for completed games. It uses an extra Data Access Service Layer to access the Database.
+
+== Features
+- Game Recording: Save completed game results with statistics
+- Statistics Calculation: Track wins, streaks, guess distribution
+- Album Management: Create and manage game collections
+- Data Persistence: PostgreSQL database with optimized schemas
+
+== Endpoints
+[cols="1,2,3"]
+|===
+|Method |Endpoint |Description
+|GET |/health |Service health check with database status
+|POST |/api/games |Save a completed game record
+|GET |/api/games |Get user's game history with pagination
+|GET |/api/stats |Get user statistics and performance metrics
+|POST |/api/albums |Create a new game album
+|GET |/api/albums |Get user's albums list
+|GET |/api/albums/:albumId |Get album details with games
+|PUT |/api/albums/:albumId |Update album title/description
+|DELETE |/api/albums/:albumId |Delete an album
+|POST |/api/albums/:albumId/games/:gameId |Add game to album
+|DELETE |/api/albums/:albumId/games/:gameId |Remove game from album
+|GET |/api/games/:gameId/visualization |Get game board visualization
+|===
+
+== Local Deployment
+[source,bash]
+----
+# Manual execution  
+npm install
+npm run build
+npm start
+----
