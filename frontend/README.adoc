@@ -1,0 +1,33 @@
+= Wordle Frontend
+:toc:
+:toc:
+:source-highlighter: highlight.js
+
+== Overview
+
+The Wordle Frontend is a React-based application that provides the user interface for the Wordle game. Built with TypeScript and following modern React patterns, it implements a stateless architecture with centralized state management. The frontend communicates with backend services through a unified API gateway:
+
+== Components
+
+=== Core Components
+* **App.tsx**: Main application router and layout
+* **GamePage**: Handles Wordle game functionality
+* **ProfilePage**: Displays user statistics and history
+* **LoginPage**: Authentication interface
+
+=== Game Components
+* **Board**: Displays the game grid
+* **Keyboard**: Interactive keyboard interface
+* **UserStats**: User statistics display
+
+== Local Developement
+[source,bash]
+----
+npm install
+npm run build
+npm start 
+
+npm test              
+npm run test:coverage
+----
+

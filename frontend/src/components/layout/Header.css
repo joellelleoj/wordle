@@ -1,0 +1,141 @@
+.header {
+  background: #121213;
+  border-bottom: 2px solid #3a3a3c;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  height: 120px;
+}
+
+.wordle-title {
+  color: #818384;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 6px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.wordle-title:hover {
+  color: #ffffff;
+}
+
+.wordle-title:focus {
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-buttons .nav-button {
+  min-width: 80px;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.nav-buttons .logout-button {
+  min-width: 80px;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.user-status {
+  color: #787c7e;
+  font-size: 20px;
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 150px;
+  margin: 6px;
+}
+
+.user-greeting {
+  color: #d7dadc;
+  font-weight: 500;
+}
+
+.login-prompt {
+  color: #787c7e;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    padding: 8px 16px;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .wordle-title {
+    font-size: 24px;
+    order: 1;
+    width: 100%;
+    text-align: center;
+  }
+
+  .nav-buttons {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .nav-buttons .nav-button,
+  .nav-buttons .logout-button {
+    font-size: 13px;
+    padding: 6px 12px;
+    min-width: 70px;
+  }
+
+  .user-status {
+    order: 3;
+    width: 100%;
+    text-align: center;
+    min-width: auto;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    padding: 6px 12px;
+  }
+
+  .wordle-title {
+    font-size: 24px;
+  }
+
+  .nav-buttons {
+    gap: 8px;
+  }
+
+  .nav-buttons .nav-button,
+  .nav-buttons .logout-button {
+    font-size: 12px;
+    padding: 4px 8px;
+    min-width: 60px;
+  }
+
+  .user-status {
+    font-size: 12px;
+  }
+}

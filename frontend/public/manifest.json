@@ -1,0 +1,13 @@
+{
+  "short_name": "Wordle",
+  "name": "Wordle - Daily Word Puzzle Game",
+  "description": "Play Wordle - A daily word puzzle game. Guess the 5-letter word in 6 tries.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#6366f1",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "categories": ["games", "education"],
+  "lang": "en",
+  "scope": "/"
+}

@@ -1,0 +1,63 @@
+.gameVisualization {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.gameVisualization--small {
+  gap: var(--spacing-sm);
+}
+
+.gameVisualization--medium {
+  gap: var(--spacing-md);
+}
+
+.gameVisualization--large {
+  gap: var(--spacing-lg);
+}
+
+.gameMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  justify-content: center;
+  text-align: center;
+}
+
+.gameWord,
+.gameAttempts {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.gameResult {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 4px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.gameResult.won {
+  background: var(--color-primary);
+  color: white;
+}
+
+.gameResult.lost {
+  background: var(--color-error);
+  color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .gameMetadata {
+    gap: var(--spacing-sm);
+    flex-direction: column;
+  }
+
+  .gameWord,
+  .gameAttempts {
+    font-size: var(--font-size-xs);
+  }
+}
