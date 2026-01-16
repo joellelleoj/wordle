@@ -1,0 +1,56 @@
+= Wordle Game Service
+
+== Overview
+
+The Game Service is a microservice component of the Wordle application that handles game logic and word validation 
+
+== Word Dictionary Sources
+
+1. **Primary**: GitHub repository 
+2. **Fallback**: Local cache
+3. **Emergency**: Hardcoded word list (500+ words)
+
+== Endpoints
+
+[cols="1,2,3"]
+|===
+|Method |Endpoint |Description 
+
+|POST |`/game/new` |Create a new game 
+|POST |`/game/:gameId/guess` |Submit a word guess 
+|GET |`/game/:gameId` |Get current game state 
+|GET |`/health` |Service health check 
+|===
+
+== Test Coverage
+[cols="1,1,1,1,1"]
+|===
+|Files |Statements |Branches |Functions | Lines
+
+|**All files** |77.06 | 55.17 | 84.44 | 76.66
+|**gameController** |62.63 | 40 | 70 | 62.92  
+|**gameService** |87.65 | 84.21 | 76.92 | 86.84
+|**wordService** |81.05 | 57.14 | 100 | 80.85
+|**swagger** |83.33 | 100 | 50 | 81.81
+|===
+
+== Local Deployment
+[source,bash]
+----
+# Using  script
+./run-local.sh
+
+# Manual execution  
+npm install
+npm run build
+npm start
+
+# Run tests
+npm install --save-dev jest
+npm test
+npm run test:coverage
+
+# Access points
+curl http://localhost:3002/health
+open http://localhost:3002/api-docs
+----
