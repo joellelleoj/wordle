@@ -1,0 +1,168 @@
+= Wordle Game - Web Engineering Project 2025
+:toc: left
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlightjs
+:icons: font
+
+== Project Overview
+
+=== Live Application
+
+* Running on Server: http://devstud.imn.htwk-leipzig.de/dev11
+
+=== Instructions
+**Clone the repository**:
+```bash
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/database.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-api-gateway.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-deployment.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-frontend.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-game-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-profile-service.git
+git clone git@gitlab.dit.htwk-leipzig.de:web-engineering-2025-wordle/wordle-user-service.git
+
+cd wordle-deployment
+
+# configure environemnt in .env
+nano .env
+
+chmod +x start-all.sh
+./start-all.sh
+
+# Access
+http://localhost:3000
+```
+
+=== Architecture
+
+
+[plantuml, architecture-diagram, svg]
+----
+@startuml
+!theme reddress-lightblue
+!define RECTANGLE class
+
+actor "User" as enduser
+
+package "External Access" {
+  [Nginx Reverse Proxy] as nginx
+  note right of nginx : devstud.imn.htwk-leipzig.de
+}
+
+package "Presentation Layer" {
+  [React Frontend] as frontend
+}
+
+package "API Layer" {
+  [API Gateway] as gateway
+}
+
+package "Business Services" {
+  [Game Service] as game
+  [User Service] as userservice
+  [Profile Service] as profileservice
+  
+}
+
+package "Data Sources" {
+  cloud "GitHub Word List" as wordlist
+  database "PostgreSQL" as postgres
+  
+  note right of wordlist : https://raw.githubusercontent.com/\ntabatkins/wordle-list/main/words
+}
+
+' User interactions
+enduser -down-> nginx : HTTPS Requests
+
+' Nginx routing
+nginx -down-> frontend : /dev11\n(Port 8080)
+nginx -down-> gateway : /dev11/api2\n(Port 8081)
+
+' Frontend to API Gateway
+frontend -down-> gateway : /api/game/*\n/api/users/*\n/api/profile/*
+
+' API Gateway routing
+gateway -down-> game : POST /new\nPOST /{gameId}/guess\nGET /{gameId}\nGET /health
+
+gateway -down-> userservice : POST /auth/register\nPOST /auth/login\nPOST /v1/gitlab/login\nGET /v1/callback\nPOST /auth/refresh\n POST /auth/logout 
+
+gateway -down-> profileservice : GET /stats\n GET /games?limit=${limit}&offset=${offset}\n POST /games\n GET /albums\n GET /albums/${albumId}\n PUT /albums/${albumId}\n DELETE /albums/${albumId}\n POST /albums/${albumId}/games/${gameId}\n DELETE /albums/${albumId}/games/${gameId}\n
+
+' Service data access
+game -down-> wordlist : GET Word Dictionary
+userservice -down-> postgres : SELECT * FROM user_schema.users\nINSERT INTO user_schema.users\nUPDATE user_schema.users\nINSERT INTO user_schema.user_sessions\nSELECT * FROM user_schema.user_sessions\nDELETE FROM user_schema.user_sessions
+profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSERT INTO profile_schema.user_stats\nUPDATE profile_schema.user_stats\nINSERT INTO profile_schema.game_records\n
+@enduml
+----
+
+== Component Table
+
+[cols="1,2,2,1", options="header"]
+|===
+|Component |Description |Deployed Address |Tests
+
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-deployment[Main Repository]
+|Project orchestration and documentation
+|N/A (orchestration only)
+|
+
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-frontend[Frontend]
+|React application with game interface
+|127.0.10.11:8080 -> /dev11
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-frontend/-/tree/main/tests[Unit & Snapshot Tests]
+
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-api-gateway[API Gateway]
+|Request routing, authentication, rate limiting
+|127.0.10.11:8082 -> /dev11/api
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-api-gateway/-/tree/main/src/tests[Tests]
+
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-game-service[Game Service]
+|Game logic, word validation
+|Internal: game-service:3001
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-game-service/-/tree/main/tests[Tests]
+
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-user-service[User Service]
+|User authentication and management
+|Internal: user-service:3002
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/wordle-user-service/-/tree/main/src/tests[Tests]
+
+|link:https://gitlab.dit.htwk-leipzig.de/Web-Engineering-2025-Wordle/wordle-profile-service[Profile Service]
+|User profiles, statistics, game albums
+|Internal: profile-service:3003
+|
+
+|link:https://gitlab.dit.htwk-leipzig.de/web-engineering-2025-wordle/database.git[Database Setup]
+|Schema initialization, data migrations
+|Internal: database-setup (one-time)
+|
+|===
+
+== Implemented Functionalities
+
+=== Game Features
+* **Classic Wordle Gameplay**: 6 attempts to guess a 5-letter word
+* **Word Validation**: Comprehensive dictionary with 10,000+ words
+* **Visual Feedback**: Color-coded tiles (green/yellow/gray)
+* **Game State Management**: Save and resume games
+
+=== User Management
+* **User Registration**: Email and username-based accounts
+* **OAuth2 Authentication**: GitLab IMN integration
+* **JWT Token Management**: Secure stateless authentication with refresh tokens
+
+=== Statistics & Albums
+* **Personal Statistics**: Total games played, win rate and guess distribution
+* **Game History**: Complete record of all finished games
+* **Personal Albums**: Organize completed games into customizable collections
+
+== Service Development
+
+Each service can be developed independently:
+
+```bash
+cd ../folder-name
+npm install
+npm run build
+npm start
+```
