@@ -1,0 +1,61 @@
+{
+  "name": "wordle-user-service",
+  "version": "1.0.0",
+  "description": "Wordle User Authentication Service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:db": "ts-node src/test/testDatabaseConnection.ts",
+    "clean": "rm -rf dist coverage",
+    "docker:build": "docker build -t wordle-user-service .",
+    "docker:run": "docker run -p 3003:3003 wordle-user-service",
+    "podman:build": "podman build -t wordle-user-service .",
+    "podman:run": "podman run -p 3003:3003 wordle-game-service",
+    "swagger": "swagger-jsdoc -d swagger/swagger.json -o swagger/swagger.yaml src/controllers/*.ts",
+    "swagger:generate": "swagger-jsdoc -d swagger-config.json -o docs/api.yaml src/controllers/*.ts",
+    "swagger:serve": "swagger-ui-serve docs/api.yaml",
+    "docs": "npm run swagger:generate && npm run swagger:serve"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "joi": "^17.9.2",
+    "axios": "^1.6.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.0.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.3",
+    "@types/node": "^20.19.11",
+    "@types/node-fetch": "^2.6.9",
+    "@types/pg": "^8.15.5",
+    "jest": "^29.7.0",
+    "@types/supertest": "^2.0.12",
+    "supertest": "^6.3.3",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "ts-jest": "^29.1.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

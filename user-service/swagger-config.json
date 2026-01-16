@@ -1,0 +1,21 @@
+{
+  "definition": {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Wordle Game Service API",
+      "version": "1.0.0",
+      "description": "RESTful API for Wordle game mechanics and state management"
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3002",
+        "description": "Development server"
+      },
+      {
+        "url": "https://devstud.imn.htwk-leipzig.de/dev11/api",
+        "description": "Production server"
+      }
+    ]
+  },
+  "apis": ["./src/controllers/*.ts"]
+}
