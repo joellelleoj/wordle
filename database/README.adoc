@@ -1,0 +1,60 @@
+= Wordle Database Setup Service
+:toc:
+:toc-placement: preamble
+:icons: font
+:source-highlighter: highlight.js
+
+== Overview
+
+This service handles the database setup, schema initialization and data verification for the Wordle application. It implements a PostgreSQL database design with user authentification and profile data. It uses PostgreSQL in a containerized environment and is designed to run as a one-time setup container in Docker Compose. Database triggers automatically update user statistics when games are completed.
+
+
+== Schemas
+
+=== User Schema (`user_schema`)
+Contains authentication and user management tables:
+
+* `users` - User accounts and profiles
+* `user_sessions` - JWT refresh token management  
+* `oauth_states` - OAuth CSRF protection
+
+=== Profile Schema (`profile_schema`)
+Contains game data and user statistics:
+
+* `game_records` - Individual completed games
+* `game_albums` - Photo album-like organization of games
+* `album_games` - Many-to-many relationship between albums and games
+* `user_stats` - Aggregated user statistics
+
+== Local Development Setup
+
+[source,bash]
+----
+# Start test PostgreSQL container
+docker run -d \
+  --name test-postgres \
+  -e POSTGRES_USER=test_user \
+  -e POSTGRES_PASSWORD=test_pass \
+  -e POSTGRES_DB=test_db \
+  -p 5432:5432 \
+  postgres:15-alpine
+
+# Run setup with test database
+DATABASE_URL="postgresql://test_user:test_pass@localhost:5432/test_db" npm start
+
+# Check if PostgreSQL is running
+docker ps | grep test-postgres
+
+# Cleanup
+docker stop test-postgres && docker rm test-postgres
+----
+
+== Building and Running
+
+[source,bash]
+----
+npm install
+npm run build
+
+npm start
+----
