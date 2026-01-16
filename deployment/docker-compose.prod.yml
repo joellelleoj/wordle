@@ -1,0 +1,174 @@
+version: "3.8"
+
+networks:
+  wordle-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+
+services:
+  # PostgreSQL Database (Internal only)
+  postgres:
+    image: postgres:15-alpine
+    container_name: wordle-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - wordle-network
+
+  # Database Setup Service (Internal only)
+  database-setup:
+    build:
+      context: ../database
+      dockerfile: Dockerfile
+    container_name: wordle-database-setup-prod
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: ${NODE_ENV}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_PORT: ${DB_PORT}
+      DB_HOST: ${DB_HOST}
+    networks:
+      - wordle-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Game Service (Internal only)
+  game-service:
+    build:
+      context: ../wordle-game-service
+      dockerfile: Dockerfile
+    container_name: wordle-game-service-prod
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${GAME_SERVICE_PORT}
+      HOST: 0.0.0.0
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      WORD_CACHE_PATH: ${WORD_CACHE_PATH}
+      GITHUB_WORDS_URL: ${GITHUB_WORDS_URL}
+      PROFILE_SERVICE_URL: ${PROFILE_SERVICE_URL}
+      API_GATEWAY_URL: ${API_GATEWAY_URL}
+    networks:
+      - wordle-network
+    restart: unless-stopped
+
+  # User Service (Internal only - NO EXTERNAL PORT)
+  user-service:
+    build:
+      context: ../wordle-user-service
+      dockerfile: Dockerfile
+    container_name: wordle-user-service-prod
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${USER_SERVICE_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      DOCKER_ENV: ${DOCKER_ENV}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      GITLAB_CLIENT_ID: ${GITLAB_CLIENT_ID}
+      GITLAB_CLIENT_SECRET: ${GITLAB_CLIENT_SECRET}
+      GITLAB_REDIRECT_URI: ${GITLAB_REDIRECT_URI}
+      GITLAB_BASE_URL: ${GITLAB_BASE_URL}
+      CLIENT_URL: ${CLIENT_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - wordle-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Profile Service (Internal only)
+  profile-service:
+    build:
+      context: ../wordle-profile-service
+      dockerfile: Dockerfile
+    container_name: wordle-profile-service-prod
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PROFILE_SERVICE_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    networks:
+      - wordle-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # API Gateway - Exposed on port 8081 for /dev11/api2 (handles both /api and user auth endpoints)
+  api-gateway:
+    build:
+      context: ../wordle-api-gateway
+      dockerfile: Dockerfile
+    container_name: wordle-api-gateway-prod
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${API_GATEWAY_PORT}
+      GAME_SERVICE_URL: ${GAME_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      PROFILE_SERVICE_URL: ${PROFILE_SERVICE_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+    ports:
+      - "127.0.10.11:${EXTERNAL_USER_SERVICE_PORT}:${API_GATEWAY_PORT}"
+    networks:
+      - wordle-network
+    depends_on:
+      - user-service
+      - game-service
+      - profile-service
+    restart: unless-stopped
+
+  # Frontend - Exposed on port 8080 for /dev11
+  frontend:
+    build:
+      context: ../wordle-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_ENVIRONMENT: ${VITE_ENVIRONMENT}
+        VITE_ENABLE_ANALYTICS: ${VITE_ENABLE_ANALYTICS}
+        VITE_ENABLE_SENTRY: ${VITE_ENABLE_SENTRY}
+        VITE_ENABLE_PWA: ${VITE_ENABLE_PWA}
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_GITLAB_CLIENT_ID: ${VITE_GITLAB_CLIENT_ID}
+        VITE_GITLAB_BASE_URL: ${VITE_GITLAB_BASE_URL}
+        VITE_REDIRECT_URI: ${VITE_REDIRECT_URI}
+        REACT_APP_GITLAB_CLIENT_ID: ${REACT_APP_GITLAB_CLIENT_ID}
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_REDIRECT_URI: ${REACT_APP_REDIRECT_URI}
+        REACT_APP_GITLAB_BASE_URL: ${REACT_APP_GITLAB_BASE_URL}
+        JWT_SECRET: ${JWT_SECRET}
+    container_name: wordle-frontend-prod
+    ports:
+      - "127.0.10.11:${EXTERNAL_FRONTEND_PORT}:${FRONTEND_PORT}"
+    networks:
+      - wordle-network
+    depends_on:
+      - api-gateway
+    restart: unless-stopped

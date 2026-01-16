@@ -1,0 +1,55 @@
+@startuml
+!theme reddress-lightblue
+!define RECTANGLE class
+
+actor "User" as enduser
+
+package "External Access" {
+  [Nginx Reverse Proxy] as nginx
+  note right of nginx : devstud.imn.htwk-leipzig.de
+}
+
+package "Presentation Layer" {
+  [React Frontend] as frontend
+}
+
+package "API Layer" {
+  [API Gateway] as gateway
+}
+
+package "Business Services" {
+  [Game Service] as game
+  [User Service] as userservice
+  [Profile Service] as profileservice
+  
+}
+
+package "Data Sources" {
+  cloud "GitHub Word List" as wordlist
+  database "PostgreSQL" as postgres
+  
+  note right of wordlist : https://raw.githubusercontent.com/\ntabatkins/wordle-list/main/words
+}
+
+' User interactions
+enduser -down-> nginx : HTTPS Requests
+
+' Nginx routing
+nginx -down-> frontend : /dev11\n(Port 8080)
+nginx -down-> gateway : /dev11/api2\n(Port 8081)
+
+' Frontend to API Gateway
+frontend -down-> gateway : /api/game/*\n/api/users/*\n/api/profile/*
+
+' API Gateway routing
+gateway -down-> game : POST /new\nPOST /{gameId}/guess\nGET /{gameId}\nGET /health
+
+gateway -down-> userservice : POST /auth/register\nPOST /auth/login\nPOST /v1/gitlab/login\nGET /v1/callback\nPOST /auth/refresh\n POST /auth/logout 
+
+gateway -down-> profileservice : GET /stats\n GET /games?limit=${limit}&offset=${offset}\n POST /games\n GET /albums\n GET /albums/${albumId}\n PUT /albums/${albumId}\n DELETE /albums/${albumId}\n POST /albums/${albumId}/games/${gameId}\n DELETE /albums/${albumId}/games/${gameId}\n
+
+' Service data access
+game -down-> wordlist : GET Word Dictionary
+userservice -down-> postgres : SELECT * FROM user_schema.users\nINSERT INTO user_schema.users\nUPDATE user_schema.users\nINSERT INTO user_schema.user_sessions\nSELECT * FROM user_schema.user_sessions\nDELETE FROM user_schema.user_sessions
+profileservice -down-> postgres : SELECT * FROM profile_schema.user_stats\nINSERT INTO profile_schema.user_stats\nUPDATE profile_schema.user_stats\nINSERT INTO profile_schema.game_records\n
+@enduml
